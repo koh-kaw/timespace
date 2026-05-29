@@ -168,11 +168,10 @@ export function CircularCalendar({
   const nowGold = nowFrac != null ? polarXY(cx, cy, rGold, fracToRad(nowFrac)) : null;
   const nowBlue = nowFrac != null ? polarXY(cx, cy, rBlue, fracToRad(nowFrac)) : null;
 
-  const hourLabels = useMemo(() => Array.from({ length: N / 2 }, (_, i) => {
-    const hr = i * 2;
-    const a = fracToRad((hr + 0.5) / N);
-    const lr = rGold + 28;
-    return { hr, x: cx + lr * Math.cos(a), y: cy + lr * Math.sin(a), big: hr % 6 === 0 };
+  const hourLabels = useMemo(() => Array.from({ length: N }, (_, i) => {
+    const a = fracToRad(i / N);
+    const lr = rGold + 22;
+    return { hr: i, x: cx + lr * Math.cos(a), y: cy + lr * Math.sin(a), big: i % 6 === 0, show: i % 3 === 0 };
   }), [cx, cy, rGold]);
 
   const handleTouch = (x: number, y: number) => {
@@ -281,8 +280,8 @@ export function CircularCalendar({
       })}
 
       {/* Hour labels */}
-      {hourLabels.map((l) => (
-        <Text key={l.hr} style={[styles.hour, { left: l.x - 14, top: l.y - 9 }, l.big ? styles.hourBig : styles.hourSm]}>
+      {hourLabels.filter(l => l.show).map((l) => (
+        <Text key={l.hr} style={[styles.hour, { left: l.x - 12, top: l.y - 7 }, l.big ? styles.hourBig : styles.hourSm]}>
           {l.hr}
         </Text>
       ))}
@@ -304,5 +303,7 @@ const styles = StyleSheet.create({
   centerWrap: { position: 'absolute', alignItems: 'center' },
   centerTitle: { fontSize: 26, fontWeight: '200', color: 'rgba(255,255,255,0.88)', letterSpacing: 3 },
   centerSub:   { fontSize: 10, fontWeight: '200', color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginTop: 5 },
-  taskLabel: { position: 'absolute', width: 48, textAlign: 'center', fontSize: 10, fontWeight: '500' },
+  taskLabel: { position: 'absolute', width: 52, textAlign: 'center', fontSize: 9, fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1,
+    overflow: 'hidden' },
 });

@@ -89,6 +89,18 @@ export default function Home() {
           </Pressable>
         </View>
 
+        {/* ── Legend ── */}
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#E8C56A' }]} />
+            <Text style={styles.legendText}>経過</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#5A9BE8' }]} />
+            <Text style={styles.legendText}>残り</Text>
+          </View>
+        </View>
+
         {/* ── Calendar ── */}
         <View style={styles.canvas}>
           <CircularCalendar
@@ -176,6 +188,10 @@ const styles = StyleSheet.create({
   zbreadcrumb: { fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 3 },
 
   canvas: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  legend: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 4 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 6, height: 6, borderRadius: 3 },
+  legendText: { fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '300', letterSpacing: 0.5 },
 
   footer: {
     flexDirection: 'row', justifyContent: 'space-around',
