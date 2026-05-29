@@ -39,13 +39,16 @@ function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown
     <View
       style={{flex:1}}
       onStartShouldSetResponder={()=>true}
-      onMoveShouldSetResponder={(_,g)=>Math.abs(g.dx)>6||Math.abs(g.dy)>6}
-      onResponderGrant={(_,g)=>{ start.current={x:g.x0,y:g.y0}; }}
-      onResponderRelease={(_,g)=>{
+      onMoveShouldSetResponder={(e,g)=>Math.abs(g.dx)>8||Math.abs(g.dy)>8}
+      onResponderGrant={(e)=>{
+        start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      }}
+      onResponderRelease={(e)=>{
         if(!start.current) return;
-        const dx=g.moveX-start.current.x, dy=g.moveY-start.current.y;
+        const dx = e.nativeEvent.pageX - start.current.x;
+        const dy = e.nativeEvent.pageY - start.current.y;
+        start.current = null;
         const adx=Math.abs(dx), ady=Math.abs(dy);
-        start.current=null;
         if(adx<15&&ady<15) return;
         if(adx>ady) { if(dx<0) onSwipeLeft(); else onSwipeRight(); }
         else { if(dy<0) onSwipeUp(); else onSwipeDown(); }
