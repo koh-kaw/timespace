@@ -46,20 +46,20 @@ function positionInRange(date: Date, range: ScaleRange): number {
   return Math.max(0, Math.min(1, (date.getTime() - range.start.getTime()) / total));
 }
 
-// Web版と同じ4層グロー
+// Kiromos方式: 外側だけぼかした太いグロー層 + 上に細くシャープな線
 function GlowArc({ path, color }: { path: ReturnType<typeof Skia.Path.Make>; color: string }) {
   return (
     <Group>
-      <Path path={path} style="stroke" strokeWidth={32} color={color} opacity={0.06} strokeCap="round">
-        <BlurMask blur={18} style="normal" />
+      {/* 外側広いグロー — 完全ぼかし */}
+      <Path path={path} style="stroke" strokeWidth={20} color={color} opacity={0.08} strokeCap="round">
+        <BlurMask blur={20} style="outer" />
       </Path>
-      <Path path={path} style="stroke" strokeWidth={18} color={color} opacity={0.14} strokeCap="round">
-        <BlurMask blur={10} style="normal" />
+      {/* 内側タイトグロー */}
+      <Path path={path} style="stroke" strokeWidth={6} color={color} opacity={0.2} strokeCap="round">
+        <BlurMask blur={6} style="outer" />
       </Path>
-      <Path path={path} style="stroke" strokeWidth={8} color={color} opacity={0.38} strokeCap="round">
-        <BlurMask blur={4} style="normal" />
-      </Path>
-      <Path path={path} style="stroke" strokeWidth={2} color={color} opacity={0.95} strokeCap="round" />
+      {/* シャープなコア — ぼかしなし */}
+      <Path path={path} style="stroke" strokeWidth={1.5} color={color} opacity={1.0} strokeCap="round" />
     </Group>
   );
 }
@@ -67,11 +67,8 @@ function GlowArc({ path, color }: { path: ReturnType<typeof Skia.Path.Make>; col
 function GlowDot({ x, y, r, color }: { x: number; y: number; r: number; color: string }) {
   return (
     <Group>
-      <Circle cx={x} cy={y} r={r * 5} color={color} opacity={0.12}>
-        <BlurMask blur={r * 3} style="normal" />
-      </Circle>
-      <Circle cx={x} cy={y} r={r * 2} color={color} opacity={0.35}>
-        <BlurMask blur={r} style="normal" />
+      <Circle cx={x} cy={y} r={r * 6} color={color} opacity={0.1}>
+        <BlurMask blur={r * 4} style="outer" />
       </Circle>
       <Circle cx={x} cy={y} r={r} color={color} />
     </Group>
@@ -112,7 +109,7 @@ export function CircularCalendar({
     for (let i = 0; i < N; i++) {
       const a = fracToRad(i / N);
       const r1 = rGold + 5;
-      const r2 = rGold + (i % 6 === 0 ? 20 : 11);
+      const r2 = rGold + (i % 6 === 0 ? 18 : 10);
       p.moveTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a));
       p.lineTo(cx + r2 * Math.cos(a), cy + r2 * Math.sin(a));
     }
@@ -141,17 +138,17 @@ export function CircularCalendar({
     <View style={[styles.wrap, { width: size, height: size }]}>
       <Canvas style={StyleSheet.absoluteFill}>
 
-        {/* Base guide circles */}
-        <Path path={baseGold} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.07)" />
-        <Path path={baseBlue} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.06)" />
+        {/* Base guide circles — very dim */}
+        <Path path={baseGold} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.05)" />
+        <Path path={baseBlue} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.04)" />
 
         {/* Task arcs */}
         {taskPaths.map((t, i) => (
           <Group key={i}>
-            <Path path={t.path} style="stroke" strokeWidth={12} color="rgba(255,255,255,0.07)" strokeCap="round">
-              <BlurMask blur={5} style="normal" />
+            <Path path={t.path} style="stroke" strokeWidth={4} color="rgba(255,255,255,0.06)" strokeCap="round">
+              <BlurMask blur={4} style="outer" />
             </Path>
-            <Path path={t.path} style="stroke" strokeWidth={2} color="rgba(255,255,255,0.45)" strokeCap="round" />
+            <Path path={t.path} style="stroke" strokeWidth={1} color="rgba(255,255,255,0.5)" strokeCap="round" />
           </Group>
         ))}
 
@@ -162,25 +159,26 @@ export function CircularCalendar({
         {bluePath && <GlowArc path={bluePath} color="#5A9BE8" />}
 
         {/* Ticks */}
-        <Path path={tickPath} style="stroke" strokeWidth={0.8} color="rgba(255,255,255,0.28)" />
+        <Path path={tickPath} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.22)" />
 
         {/* Now dots */}
         {nowGold && <GlowDot x={nowGold.x} y={nowGold.y} r={3.5} color="#E8C56A" />}
         {nowBlue && <GlowDot x={nowBlue.x} y={nowBlue.y} r={3} color="#5A9BE8" />}
 
         {/* Center disk shadow */}
-        <Circle cx={cx} cy={cy + 5} r={rCenter + 4} color="rgba(0,0,0,0.5)">
-          <BlurMask blur={14} style="normal" />
+        <Circle cx={cx} cy={cy + 4} r={rCenter + 3} color="rgba(0,0,0,0.6)">
+          <BlurMask blur={16} style="normal" />
         </Circle>
 
-        {/* Center disk */}
-        <Circle cx={cx} cy={cy} r={rCenter} color="#07051a" />
-        <Circle cx={cx} cy={cy} r={rCenter} color="rgba(255,255,255,0.03)" />
-        <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.22)" />
+        {/* Center disk — 黒に近い暗さ */}
+        <Circle cx={cx} cy={cy} r={rCenter} color="#050412" />
 
-        {/* Center shimmer */}
-        <Circle cx={cx - rCenter * 0.22} cy={cy - rCenter * 0.3} r={rCenter * 0.4} color="rgba(255,255,255,0.07)">
-          <BlurMask blur={8} style="normal" />
+        {/* Center rim */}
+        <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.18)" />
+
+        {/* Center shimmer — 極めて薄く */}
+        <Circle cx={cx - rCenter * 0.2} cy={cy - rCenter * 0.28} r={rCenter * 0.38} color="rgba(255,255,255,0.05)">
+          <BlurMask blur={10} style="normal" />
         </Circle>
 
       </Canvas>
@@ -211,9 +209,9 @@ export function CircularCalendar({
 const styles = StyleSheet.create({
   wrap: { position: 'relative' },
   hour: { position: 'absolute', textAlign: 'center', width: 28 },
-  hourBig: { fontSize: 11, fontWeight: '200', color: 'rgba(255,255,255,0.52)' },
-  hourSm:  { fontSize: 9,  fontWeight: '200', color: 'rgba(255,255,255,0.22)' },
+  hourBig: { fontSize: 11, fontWeight: '200', color: 'rgba(255,255,255,0.45)' },
+  hourSm:  { fontSize: 9,  fontWeight: '200', color: 'rgba(255,255,255,0.18)' },
   centerWrap: { position: 'absolute', alignItems: 'center' },
-  centerTitle: { fontSize: 26, fontWeight: '200', color: 'rgba(255,255,255,0.9)', letterSpacing: 3 },
-  centerSub:   { fontSize: 10, fontWeight: '200', color: 'rgba(255,255,255,0.28)', letterSpacing: 1.5, marginTop: 5 },
+  centerTitle: { fontSize: 26, fontWeight: '200', color: 'rgba(255,255,255,0.88)', letterSpacing: 3 },
+  centerSub:   { fontSize: 10, fontWeight: '200', color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginTop: 5 },
 });
