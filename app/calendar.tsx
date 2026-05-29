@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpaceBackground } from '../components/SpaceBackground';
-import { useSessionStore } from '../lib/store';
+import { useSessionStore, useViewStore } from '../lib/store';
 import { fetchTasksInRange } from '../lib/tasks';
 import type { Task } from '../lib/supabase';
 
@@ -17,9 +18,12 @@ function sameDay(a: Date, b: Date) {
 
 export default function CalendarPage() {
   const userId = useSessionStore(s => s.userId);
+  const { setAnchor, setScale } = useViewStore();
   const [anchor, setAnchor] = useState(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selected, setSelected] = useState<Date>(new Date());
+  const router = useRouter();
+  const lastTap = useRef<{date: string, time: number}>({ date: '', time: 0 });
 
   const year = anchor.getFullYear();
   const month = anchor.getMonth();
@@ -95,7 +99,19 @@ export default function CalendarPage() {
                 const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
                 const dayTasks = taskMap.get(key) ?? [];
                 return (
-                  <Pressable key={i} style={styles.cell} onPress={() => setSelected(day)}>
+                  <Pressable key={i} style={styles.cell} onPress={() => {
+                    const key = day.toDateString();
+                    const now = Date.now();
+                    if (lastTap.current.date === key && now - lastTap.current.time < 400) {
+                      // Double tap → go to day view for this date
+                      setAnchor(day);
+                      setScale('day');
+                      router.push('/');
+                    } else {
+                      lastTap.current = { date: key, time: now };
+                      setSelected(day);
+                    }
+                  }}>
                     <View style={[styles.dayCircle, isToday && styles.todayCircle, isSel && !isToday && styles.selCircle]}>
                       <Text style={[styles.dayNum, i===0&&styles.sun, i===6&&styles.sat, (isToday||isSel)&&styles.selText]}>
                         {day.getDate()}

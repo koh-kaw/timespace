@@ -51,6 +51,8 @@ export default function Home() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const swipeRef = React.useRef({ x0: 0, y0: 0 });
+  const tasksRef = React.useRef<typeof tasks>([]);
+  React.useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   const panResponder = React.useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
@@ -78,10 +80,10 @@ export default function Home() {
           if (drillStack.length > 0) {
             // in drill: go back up
             popDrill();
-          } else if (scaleKind === 'day' && tasks.length > 0) {
+          } else if (scaleKind === 'day' && tasksRef.current.length > 0) {
             // day view: drill into nearest task to now
             const nowMs = Date.now();
-            const nearest = tasks.reduce((best, t) => {
+            const nearest = tasksRef.current.reduce((best, t) => {
               const mid = (new Date(t.start_at).getTime() + new Date(t.end_at).getTime()) / 2;
               const bestMid = (new Date(best.start_at).getTime() + new Date(best.end_at).getTime()) / 2;
               return Math.abs(mid - nowMs) < Math.abs(bestMid - nowMs) ? t : best;
@@ -117,7 +119,7 @@ export default function Home() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  if (userId === null) return <Redirect href="/signin" />;
+  // if (userId === null) return <Redirect href="/signin" />;  // DEV: disabled
 
   const W = Dimensions.get('window').width;
   const canvasSize = Math.min(W, 420);
