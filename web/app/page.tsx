@@ -66,18 +66,23 @@ function Scene() {
   // 内側: ブルー（残り）
 
   const centerLabelTex = useMemo(() => {
+    const DPR = window.devicePixelRatio || 2
+    const W = 512 * DPR, H = 256 * DPR
     const cvs = document.createElement("canvas")
-    cvs.width = 512; cvs.height = 256
+    cvs.width = W; cvs.height = H
     const c = cvs.getContext("2d")!
+    c.scale(DPR, DPR)
     c.clearRect(0, 0, 512, 256)
-    c.font = "200 72px -apple-system, 'Helvetica Neue', sans-serif"
-    c.fillStyle = "rgba(255,255,255,0.85)"
+    c.font = "300 72px -apple-system, 'Helvetica Neue', sans-serif"
+    c.fillStyle = "rgba(255,255,255,0.88)"
     c.textAlign = "center"; c.textBaseline = "middle"
     c.fillText("1日", 256, 90)
-    c.font = "200 32px -apple-system, 'Helvetica Neue', sans-serif"
-    c.fillStyle = "rgba(255,255,255,0.3)"
-    c.fillText("2026 / 5 / 29", 256, 168)
-    return new THREE.CanvasTexture(cvs)
+    c.font = "200 30px -apple-system, 'Helvetica Neue', sans-serif"
+    c.fillStyle = "rgba(255,255,255,0.32)"
+    c.fillText("2026 / 5 / 29", 256, 170)
+    const tex = new THREE.CanvasTexture(cvs)
+    tex.anisotropy = 16
+    return tex
   }, [])
 
   // Hour tick marks
@@ -99,14 +104,18 @@ function Scene() {
   const hourSprites = useMemo(() => {
     return Array.from({ length: N / 2 }, (_, i) => {
       const hr = i * 2
+      const DPR = window.devicePixelRatio || 2
+      const SZ = 80 * DPR
       const cvs = document.createElement("canvas")
-      cvs.width = 80; cvs.height = 80
+      cvs.width = SZ; cvs.height = SZ
       const c = cvs.getContext("2d")!
+      c.scale(DPR, DPR)
       c.font = `200 ${hr % 6 === 0 ? 28 : 22}px -apple-system, 'Helvetica Neue', sans-serif`
       c.fillStyle = hr % 6 === 0 ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.25)"
       c.textAlign = "center"; c.textBaseline = "middle"
       c.fillText(String(hr), 40, 40)
       const tex = new THREE.CanvasTexture(cvs)
+      tex.anisotropy = 8
       const a = fracToAngle((hr + 0.5) / N)
       return { tex, a }
     })
@@ -187,7 +196,7 @@ export default function Page() {
     <div style={{ width: "100vw", height: "100vh", background: "#000008", position: "relative" }}>
       <Canvas
         dpr={[1, 2]}
-        camera={{ position: [0, 0, 8], fov: 40 }}
+        camera={{ position: [0, 0, 9.2], fov: 46 }}
         gl={{ antialias: true }}
       >
         <color attach="background" args={["#000008"]} />
