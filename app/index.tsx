@@ -29,6 +29,45 @@ function CurrentTime() {
 }
 
 
+
+function DrillSwipeOverlay({ size, onSwipeLeft, onSwipeRight, onSwipeDown }: {
+  size: number;
+  onSwipeLeft: ()=>void;
+  onSwipeRight: ()=>void;
+  onSwipeDown: ()=>void;
+}) {
+  const start = React.useRef<{x:number,y:number}|null>(null);
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        width: size,
+        height: size,
+        backgroundColor: 'transparent',
+        zIndex: 10,
+      }}
+      onTouchStart={(e) => {
+        const t = e.nativeEvent.touches[0];
+        start.current = { x: t.pageX, y: t.pageY };
+      }}
+      onTouchEnd={(e) => {
+        if (!start.current) return;
+        const t = e.nativeEvent.changedTouches[0];
+        const dx = t.pageX - start.current.x;
+        const dy = t.pageY - start.current.y;
+        start.current = null;
+        const adx = Math.abs(dx), ady = Math.abs(dy);
+        if (adx < 20 && ady < 20) return;
+        if (adx > ady) {
+          if (dx < 0) onSwipeLeft(); else onSwipeRight();
+        } else if (dy > 40) {
+          onSwipeDown();
+        }
+      }}
+    />
+  );
+}
+
 function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown }: {
   children: React.ReactNode;
   onSwipeLeft: ()=>void; onSwipeRight: ()=>void;
@@ -201,6 +240,24 @@ export default function Home() {
               onSlicePress={(i) => { setSelectedSlice(i); setEditingTask(null); setModalOpen(true); }}
               onTaskPress={(t) => { setSelectedSlice(null); setEditingTask(t); setModalOpen(true); }}
             />
+          {/* Swipe overlay for drill mode — covers canvas to capture swipes */}
+          {drillStack.length > 0 && (() => {
+            const sortedTasks = [...tasks].sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+            const curId = drillStack[drillStack.length-1].id;
+            const idx = sortedTasks.findIndex(t=>t.id===curId);
+            return (
+              <DrillSwipeOverlay
+                size={canvasSize}
+                onSwipeLeft={() => {
+                  if (idx < sortedTasks.length-1) { popDrill(); setTimeout(()=>pushDrill(sortedTasks[idx+1]),40); }
+                }}
+                onSwipeRight={() => {
+                  if (idx > 0) { popDrill(); setTimeout(()=>pushDrill(sortedTasks[idx-1]),40); }
+                }}
+                onSwipeDown={() => popDrill()}
+              />
+            );
+          })()}
           {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#E8C56A" />}
         </View>
         </SwipeView>
