@@ -81,8 +81,22 @@ export function TaskFormModal({
       : `${totalMin}m`
     : '⚠';
 
-  const buildStart = () => { const d = new Date(startAt); d.setHours(startH, startM, 0, 0); return d; };
-  const buildEnd = () => { const d = new Date(endAt); d.setHours(endH, endM, 0, 0); return d; };
+  const buildStart = () => {
+    // Always use startAt's date, but override the hours/minutes with picker values
+    const d = new Date(startAt);
+    d.setHours(startH, startM, 0, 0);
+    return d;
+  };
+  const buildEnd = () => {
+    // Use startAt's date (same day), but with end hours/minutes
+    // If endH < startH, it wraps to next day — handle that
+    const d = new Date(startAt);
+    d.setHours(endH, endM, 0, 0);
+    if (d <= buildStart()) {
+      d.setDate(d.getDate() + 1);
+    }
+    return d;
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
