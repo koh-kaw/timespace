@@ -53,6 +53,12 @@ export default function Home() {
   const swipeRef = React.useRef({ x0: 0, y0: 0 });
   const tasksRef = React.useRef<typeof tasks>([]);
   React.useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+  const drillRef = React.useRef<typeof drillStack>([]);
+  React.useEffect(() => { drillRef.current = drillStack; }, [drillStack]);
+  const scaleRef = React.useRef(scaleKind);
+  React.useEffect(() => { scaleRef.current = scaleKind; }, [scaleKind]);
+  const anchorRef = React.useRef(anchorDate);
+  React.useEffect(() => { anchorRef.current = anchorDate; }, [anchorDate]);
   const panResponder = React.useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
