@@ -3,7 +3,6 @@ import {
   Modal, View, Text, TextInput, Pressable,
   StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { theme } from '../lib/theme';
 
 type Props = {
   visible: boolean;
@@ -29,8 +28,7 @@ type Props = {
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-
-const NOTIFICATION_OPTIONS = [
+const NOTIF_OPTIONS = [
   { label: '通知なし', value: null },
   { label: '開始時', value: 0 },
   { label: '5分前', value: 5 },
@@ -38,8 +36,7 @@ const NOTIFICATION_OPTIONS = [
   { label: '1時間前', value: 60 },
   { label: '1日前', value: 1440 },
 ];
-
-const RECURRENCE_OPTIONS = [
+const RECUR_OPTIONS = [
   { label: '繰り返しなし', value: null },
   { label: '毎日', value: 'FREQ=DAILY' },
   { label: '平日', value: 'FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR' },
@@ -47,9 +44,7 @@ const RECURRENCE_OPTIONS = [
   { label: '毎月', value: 'FREQ=MONTHLY' },
 ];
 
-function roundToStep(min: number, step: number): number {
-  return Math.round(min / step) * step % 60;
-}
+function roundMin(m: number) { return Math.round(m / 5) * 5 % 60; }
 
 export function TaskFormModal({
   visible, initialTitle = '', initialNotes = '',
@@ -61,40 +56,28 @@ export function TaskFormModal({
   const [notif, setNotif] = useState<number | null>(initialNotificationMinutesBefore);
   const [recur, setRecur] = useState<string | null>(initialRecurrence);
   const [startH, setStartH] = useState(startAt.getHours());
-  const [startM, setStartM] = useState(roundToStep(startAt.getMinutes(), 5));
+  const [startM, setStartM] = useState(roundMin(startAt.getMinutes()));
   const [endH, setEndH] = useState(endAt.getHours());
-  const [endM, setEndM] = useState(roundToStep(endAt.getMinutes(), 5));
+  const [endM, setEndM] = useState(roundMin(endAt.getMinutes()));
 
   useEffect(() => {
     if (visible) {
       setTitle(initialTitle); setNotes(initialNotes);
       setNotif(initialNotificationMinutesBefore); setRecur(initialRecurrence);
-      setStartH(startAt.getHours()); setStartM(roundToStep(startAt.getMinutes(), 5));
-      setEndH(endAt.getHours()); setEndM(roundToStep(endAt.getMinutes(), 5));
+      setStartH(startAt.getHours()); setStartM(roundMin(startAt.getMinutes()));
+      setEndH(endAt.getHours()); setEndM(roundMin(endAt.getMinutes()));
     }
   }, [visible, initialTitle, initialNotes, initialNotificationMinutesBefore, initialRecurrence, startAt, endAt]);
 
   const totalMin = (endH * 60 + endM) - (startH * 60 + startM);
   const durationLabel = totalMin > 0
-    ? totalMin >= 60
-      ? `${Math.floor(totalMin / 60)}h${totalMin % 60 ? (totalMin % 60) + 'm' : ''}`
-      : `${totalMin}m`
+    ? totalMin >= 60 ? `${Math.floor(totalMin/60)}h${totalMin%60 ? (totalMin%60)+'m' : ''}` : `${totalMin}m`
     : '⚠';
 
-  const buildStart = () => {
-    // Always use startAt's date, but override the hours/minutes with picker values
-    const d = new Date(startAt);
-    d.setHours(startH, startM, 0, 0);
-    return d;
-  };
+  const buildStart = () => { const d = new Date(startAt); d.setHours(startH, startM, 0, 0); return d; };
   const buildEnd = () => {
-    // Use startAt's date (same day), but with end hours/minutes
-    // If endH < startH, it wraps to next day — handle that
-    const d = new Date(startAt);
-    d.setHours(endH, endM, 0, 0);
-    if (d <= buildStart()) {
-      d.setDate(d.getDate() + 1);
-    }
+    const d = new Date(startAt); d.setHours(endH, endM, 0, 0);
+    if (d <= buildStart()) d.setDate(d.getDate() + 1);
     return d;
   };
 
@@ -129,45 +112,35 @@ export function TaskFormModal({
               <TimeBlock label="終了" h={endH} m={endM} onH={setEndH} onM={setEndM} />
             </View>
 
-            {/* Title */}
             <Text style={styles.label}>件名</Text>
-            <TextInput value={title} onChangeText={setTitle}
-              placeholder="例：家の掃除" placeholderTextColor="rgba(255,255,255,0.25)"
-              style={styles.input} autoFocus={!isEditing} />
+            <TextInput value={title} onChangeText={setTitle} placeholder="例：家の掃除"
+              placeholderTextColor="rgba(255,255,255,0.2)" style={styles.input} autoFocus={!isEditing} />
 
-            {/* Notes */}
             <Text style={styles.label}>メモ</Text>
-            <TextInput value={notes} onChangeText={setNotes}
-              placeholder="" placeholderTextColor="rgba(255,255,255,0.25)"
-              multiline numberOfLines={3} style={[styles.input, styles.textarea]} />
+            <TextInput value={notes} onChangeText={setNotes} placeholder=""
+              placeholderTextColor="rgba(255,255,255,0.2)" multiline numberOfLines={3}
+              style={[styles.input, styles.textarea]} />
 
-            {/* Notification */}
             <Text style={styles.label}>通知</Text>
             <View style={styles.chips}>
-              {NOTIFICATION_OPTIONS.map((opt) => (
+              {NOTIF_OPTIONS.map(opt => (
                 <Pressable key={String(opt.value)} onPress={() => setNotif(opt.value)}
-                  style={[styles.chip, notif === opt.value && styles.chipSelected]}>
-                  <Text style={[styles.chipText, notif === opt.value && styles.chipTextSelected]}>
-                    {opt.label}
-                  </Text>
+                  style={[styles.chip, notif === opt.value && styles.chipSel]}>
+                  <Text style={[styles.chipText, notif === opt.value && styles.chipTextSel]}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>
 
-            {/* Recurrence */}
             <Text style={styles.label}>繰り返し</Text>
             <View style={styles.chips}>
-              {RECURRENCE_OPTIONS.map((opt) => (
+              {RECUR_OPTIONS.map(opt => (
                 <Pressable key={opt.label} onPress={() => setRecur(opt.value)}
-                  style={[styles.chip, recur === opt.value && styles.chipSelected]}>
-                  <Text style={[styles.chipText, recur === opt.value && styles.chipTextSelected]}>
-                    {opt.label}
-                  </Text>
+                  style={[styles.chip, recur === opt.value && styles.chipSel]}>
+                  <Text style={[styles.chipText, recur === opt.value && styles.chipTextSel]}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>
 
-            {/* Actions */}
             <View style={styles.actions}>
               {onDelete && (
                 <Pressable onPress={onDelete} style={[styles.btn, styles.btnDanger]}>
@@ -175,7 +148,7 @@ export function TaskFormModal({
                 </Pressable>
               )}
               <Pressable onPress={onClose} style={[styles.btn, styles.btnSecondary]}>
-                <Text style={styles.btnSecondaryText}>キャンセル</Text>
+                <Text style={styles.btnSecText}>キャンセル</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -184,8 +157,8 @@ export function TaskFormModal({
                     notification_minutes_before: notif, recurrence_rule: recur,
                     start_at: buildStart(), end_at: buildEnd() });
                 }}
-                style={[styles.btn, styles.btnPrimary, totalMin <= 0 && { opacity: 0.4 }]}>
-                <Text style={styles.btnPrimaryText}>保存</Text>
+                style={[styles.btn, styles.btnPrimary, totalMin <= 0 && { opacity: 0.35 }]}>
+                <Text style={styles.btnPrimText}>保存</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -203,11 +176,9 @@ function TimeBlock({ label, h, m, onH, onM }: {
     <View style={styles.timeBlock}>
       <Text style={styles.timeBlockLabel}>{label}</Text>
       <View style={styles.timeSelectors}>
-        <TimeScroller values={HOURS} selected={h} onSelect={onH}
-          format={(v) => String(v).padStart(2, '0')} unit="時" />
+        <TimeScroller values={HOURS} selected={h} onSelect={onH} format={v => String(v).padStart(2,'0')} unit="時" />
         <Text style={styles.timeSep}>:</Text>
-        <TimeScroller values={MINUTES} selected={m} onSelect={onM}
-          format={(v) => String(v).padStart(2, '0')} unit="分" />
+        <TimeScroller values={MINUTES} selected={m} onSelect={onM} format={v => String(v).padStart(2,'0')} unit="分" />
       </View>
     </View>
   );
@@ -220,10 +191,10 @@ function TimeScroller({ values, selected, onSelect, format, unit }: {
   return (
     <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollerContent}
       showsVerticalScrollIndicator={false} nestedScrollEnabled>
-      {values.map((v) => (
+      {values.map(v => (
         <Pressable key={v} onPress={() => onSelect(v)}
-          style={[styles.scrollerItem, v === selected && styles.scrollerItemSelected]}>
-          <Text style={[styles.scrollerText, v === selected && styles.scrollerTextSelected]}>
+          style={[styles.scrollerItem, v === selected && styles.scrollerItemSel]}>
+          <Text style={[styles.scrollerText, v === selected && styles.scrollerTextSel]}>
             {format(v)}<Text style={{ fontSize: 9 }}>{unit}</Text>
           </Text>
         </Pressable>
@@ -232,61 +203,77 @@ function TimeScroller({ values, selected, onSelect, format, unit }: {
   );
 }
 
+const S = {
+  bg: '#000000',
+  sheet: '#0a0818',
+  border: 'rgba(255,255,255,0.1)',
+  borderBright: 'rgba(255,255,255,0.18)',
+  text: 'rgba(255,255,255,0.85)',
+  textDim: 'rgba(255,255,255,0.35)',
+  gold: '#E8C56A',
+  blue: '#5A9BE8',
+  danger: '#FF6B6B',
+};
+
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#12103A',
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: S.sheet,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
     maxHeight: '92%',
     borderTopWidth: 0.5, borderLeftWidth: 0.5, borderRightWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: S.borderBright,
   },
-  handle: { width: 36, height: 4, backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  handle: { width: 36, height: 4, backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2, alignSelf: 'center', marginTop: 10 },
   body: { padding: 20, paddingBottom: 48 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  dateLabel: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
-  drillBtn: { backgroundColor: 'rgba(139,127,255,0.3)', paddingHorizontal: 12,
-    paddingVertical: 6, borderRadius: 14, borderWidth: 0.5, borderColor: 'rgba(139,127,255,0.6)' },
-  drillBtnText: { color: '#A89CFF', fontSize: 12, fontWeight: '600' },
+  dateLabel: { fontSize: 13, color: S.textDim, fontWeight: '300', letterSpacing: 1 },
+  drillBtn: { backgroundColor: 'rgba(232,197,106,0.15)', paddingHorizontal: 12,
+    paddingVertical: 6, borderRadius: 14, borderWidth: 0.5, borderColor: 'rgba(232,197,106,0.4)' },
+  drillBtnText: { color: S.gold, fontSize: 12, fontWeight: '500' },
+
   timePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 20, backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 16, padding: 14, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' },
+    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 14,
+    borderWidth: 0.5, borderColor: S.border, marginBottom: 16 },
   timeBlock: { alignItems: 'center', flex: 1 },
-  timeBlockLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  timeBlockLabel: { fontSize: 10, color: S.textDim, textTransform: 'uppercase',
+    letterSpacing: 0.8, fontWeight: '500', marginBottom: 8 },
   timeSelectors: { flexDirection: 'row', alignItems: 'center' },
-  timeSep: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginHorizontal: 2 },
-  durationBadge: { backgroundColor: 'rgba(139,127,255,0.2)', borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 6, borderWidth: 0.5, borderColor: 'rgba(139,127,255,0.4)' },
-  durationText: { fontSize: 12, color: '#A89CFF', fontWeight: '700', textAlign: 'center' },
+  timeSep: { fontSize: 18, fontWeight: '300', color: S.text, marginHorizontal: 2 },
+  durationBadge: { backgroundColor: 'rgba(232,197,106,0.12)', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 6, borderWidth: 0.5, borderColor: 'rgba(232,197,106,0.3)' },
+  durationText: { fontSize: 12, color: S.gold, fontWeight: '600' },
+
   scroller: { height: 120, width: 48 },
   scrollerContent: { alignItems: 'center', paddingVertical: 4 },
-  scrollerItem: { paddingVertical: 6, paddingHorizontal: 4, borderRadius: 8, marginVertical: 1, minWidth: 44, alignItems: 'center' },
-  scrollerItemSelected: { backgroundColor: 'rgba(139,127,255,0.4)' },
-  scrollerText: { fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: '400' },
-  scrollerTextSelected: { color: '#FFFFFF', fontWeight: '700' },
-  label: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600',
-    marginTop: 16, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
-  input: { borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12,
+  scrollerItem: { paddingVertical: 6, paddingHorizontal: 4, borderRadius: 8,
+    marginVertical: 1, minWidth: 44, alignItems: 'center' },
+  scrollerItemSel: { backgroundColor: 'rgba(232,197,106,0.2)' },
+  scrollerText: { fontSize: 15, color: 'rgba(255,255,255,0.4)', fontWeight: '300' },
+  scrollerTextSel: { color: S.gold, fontWeight: '600' },
+
+  label: { fontSize: 10, color: S.textDim, fontWeight: '500', marginTop: 16,
+    marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
+  input: { borderWidth: 0.5, borderColor: S.border, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
-    backgroundColor: 'rgba(255,255,255,0.06)', color: '#FFFFFF' },
+    backgroundColor: 'rgba(255,255,255,0.04)', color: S.text },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.05)' },
-  chipSelected: { backgroundColor: 'rgba(139,127,255,0.3)', borderColor: 'rgba(139,127,255,0.6)' },
-  chipText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
-  chipTextSelected: { color: '#A89CFF', fontWeight: '600' },
+    borderWidth: 0.5, borderColor: S.border, backgroundColor: 'rgba(255,255,255,0.03)' },
+  chipSel: { backgroundColor: 'rgba(232,197,106,0.15)', borderColor: 'rgba(232,197,106,0.5)' },
+  chipText: { fontSize: 12, color: S.textDim },
+  chipTextSel: { color: S.gold, fontWeight: '500' },
+
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 24 },
   btn: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12 },
-  btnPrimary: { backgroundColor: 'rgba(139,127,255,0.8)' },
-  btnPrimaryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  btnSecondary: { backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' },
-  btnSecondaryText: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
-  btnDanger: { backgroundColor: 'rgba(255,107,107,0.15)', marginRight: 'auto',
-    borderWidth: 0.5, borderColor: 'rgba(255,107,107,0.3)' },
-  btnDangerText: { color: '#FF6B6B', fontSize: 14 },
+  btnPrimary: { backgroundColor: 'rgba(232,197,106,0.85)' },
+  btnPrimText: { color: '#000', fontWeight: '600', fontSize: 14 },
+  btnSecondary: { backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5, borderColor: S.border },
+  btnSecText: { color: S.textDim, fontSize: 14 },
+  btnDanger: { backgroundColor: 'rgba(255,107,107,0.12)', marginRight: 'auto',
+    borderWidth: 0.5, borderColor: 'rgba(255,107,107,0.25)' },
+  btnDangerText: { color: S.danger, fontSize: 14 },
 });
