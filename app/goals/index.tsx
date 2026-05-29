@@ -581,12 +581,16 @@ const styles = StyleSheet.create({
   addRowText: { color: '#E8C56A', fontSize: 14, fontWeight: '500' },
 
   // Decompose modal
-  decomposeBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  decomposeBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
   decomposeSheet: {
-    backgroundColor: '#000000',
+    backgroundColor: '#0a0818',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderTopWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+    minHeight: 260,
     maxHeight: '90%',
+    paddingBottom: 40,
   },
   handle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 10 },
   decomposeTitle: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.88)', paddingHorizontal: 20, paddingTop: 16, marginBottom: 4 },
