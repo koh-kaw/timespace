@@ -11,6 +11,22 @@ import { fetchTasksInRange, fetchChildTasks, createTask, deleteTask, updateTask 
 import type { Task } from '../lib/supabase';
 import { SCALE_ORDER } from '../lib/time';
 
+function CurrentTime() {
+  const [now, setNow] = React.useState(new Date());
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  return (
+    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', fontWeight: '200', letterSpacing: 2, fontVariant: ['tabular-nums'] }}>
+      {h}:{m}:{s}
+    </Text>
+  );
+}
+
 export default function Home() {
   const userId = useSessionStore((s) => s.userId);
   const { scaleKind, anchorDate, drillStack, selectedSlice,
@@ -89,12 +105,13 @@ export default function Home() {
           </Pressable>
         </View>
 
-        {/* ── Legend ── */}
+        {/* ── Legend + current time ── */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#E8C56A' }]} />
             <Text style={styles.legendText}>経過</Text>
           </View>
+          <CurrentTime />
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#5A9BE8' }]} />
             <Text style={styles.legendText}>残り</Text>

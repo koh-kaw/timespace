@@ -51,6 +51,7 @@ function makeFullCircle(cx: number, cy: number, r: number) {
 
 function positionInRange(date: Date, range: ScaleRange): number {
   const total = range.end.getTime() - range.start.getTime();
+  if (total <= 0) return 0;
   return Math.max(0, Math.min(1, (date.getTime() - range.start.getTime()) / total));
 }
 
@@ -160,8 +161,11 @@ export function CircularCalendar({
   const taskPaths = useMemo(() => tasks.map(task => {
     const s = new Date(task.start_at), e = new Date(task.end_at);
     if (e <= range.start || s >= range.end) return null;
-    const p1 = positionInRange(s, range), p2 = positionInRange(e, range);
-    return { task, path: makeArcPath(cx, cy, (rGold + rBlue) / 2, p1, p2) };
+    const p1 = positionInRange(s, range);
+    const p2 = positionInRange(e, range);
+    if (p2 <= p1) return null; // skip invalid
+    const rMid = (rGold + rBlue) / 2;
+    return { task, path: makeArcPath(cx, cy, rMid, p1, p2) };
   }).filter(Boolean) as { task: Task; path: ReturnType<typeof Skia.Path.Make> }[],
     [tasks, range, cx, cy, rGold, rBlue]);
 
@@ -223,6 +227,28 @@ export function CircularCalendar({
 
         {nowGold && <GlowDot x={nowGold.x} y={nowGold.y} r={3.5} color="#E8C56A" />}
         {nowBlue && <GlowDot x={nowBlue.x} y={nowBlue.y} r={3} color="#5A9BE8" />}
+
+        {/* Clock hand — line from center to now position */}
+        {nowFrac != null && (() => {
+          const handAngle = fracToRad(nowFrac);
+          const handLen = rBlue - 8;
+          const hx = cx + handLen * Math.cos(handAngle);
+          const hy = cy + handLen * Math.sin(handAngle);
+          return (
+            <Group>
+              {/* Glow */}
+              <Path
+                path={(() => { const p = Skia.Path.Make(); p.moveTo(cx, cy); p.lineTo(hx, hy); return p; })()}
+                style="stroke" strokeWidth={6} color="#ffffff" opacity={0.08} strokeCap="round">
+                <BlurMask blur={4} style="outer" />
+              </Path>
+              {/* Core hand */}
+              <Path
+                path={(() => { const p = Skia.Path.Make(); p.moveTo(cx, cy); p.lineTo(hx, hy); return p; })()}
+                style="stroke" strokeWidth={1} color="rgba(255,255,255,0.5)" strokeCap="round" />
+            </Group>
+          );
+        })()}
 
         {/* Glass sphere */}
         <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={rCenter * 0.06} color="rgba(120,50,30,0.35)">
