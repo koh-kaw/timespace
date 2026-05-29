@@ -311,27 +311,28 @@ function DecomposeModal({
           <Text style={styles.decomposeTitle}>AIで逆算分解</Text>
           <Text style={styles.decomposeGoal}>「{node.title}」</Text>
 
+          {/* Status always visible */}
           {loading && (
             <View style={styles.loadingArea}>
               <ActivityIndicator color="#E8C56A" size="large" />
-              <Text style={styles.loadingText}>AIが逆算中…</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', marginTop: 12, fontSize: 13 }}>{debug || 'AIが逆算中…'}</Text>
             </View>
           )}
 
-          {debug !== '' && !error && !result && !loading && (
-            <View style={{ padding: 16 }}>
-              <Text style={{ color: '#E8C56A', fontSize: 11 }}>{debug}</Text>
-            </View>
-          )}
-
-          {error ? (
-            <View style={{ padding: 16 }}>
-              <Text style={{ color: '#FF6B6B', marginBottom: 12 }}>{error}</Text>
+          {!loading && error !== '' && (
+            <View style={{ padding: 20 }}>
+              <Text style={{ color: '#FF6B6B', marginBottom: 16, fontSize: 13, lineHeight: 20 }}>{error}</Text>
               <Pressable onPress={runDecompose} style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>再試行</Text>
               </Pressable>
             </View>
-          ) : null}
+          )}
+
+          {!loading && !error && !result && (
+            <View style={{ padding: 20 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{debug}</Text>
+            </View>
+          )}
 
           {result && !loading && (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
