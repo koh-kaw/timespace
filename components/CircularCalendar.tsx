@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { GLView } from 'expo-gl';
-import * as THREE from 'three';
+import {
+  Canvas, Path, Circle, Skia, BlurMask, Group,
+} from '@shopify/react-native-skia';
 import type { Task } from '../lib/supabase';
 import type { ScaleRange } from '../lib/time';
 
@@ -15,25 +16,29 @@ type Props = {
 };
 
 const N = 24;
-const R_GOLD = 0.88;
-const R_BLUE = 0.73;
-const R_CENTER = 0.22;
 
-function fracToAngle(f: number) {
+function fracToRad(f: number) {
   return f * Math.PI * 2 - Math.PI / 2;
 }
 
-function makeArcPoints(startFrac: number, endFrac: number, r: number, segs = 180): THREE.Vector3[] {
-  return Array.from({ length: segs + 1 }, (_, i) => {
-    const a = fracToAngle(startFrac + (i / segs) * (endFrac - startFrac));
-    return new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), 0);
-  });
+function polarXY(cx: number, cy: number, r: number, rad: number) {
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-function makeGlowLine(pts: THREE.Vector3[], color: THREE.Color, opacity: number): THREE.Line {
-  const geo = new THREE.BufferGeometry().setFromPoints(pts);
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
-  return new THREE.Line(geo, mat);
+function makeArcPath(cx: number, cy: number, r: number, startFrac: number, endFrac: number) {
+  const path = Skia.Path.Make();
+  path.addArc(
+    { x: cx - r, y: cy - r, width: r * 2, height: r * 2 },
+    startFrac * 360 - 90,
+    (endFrac - startFrac) * 360
+  );
+  return path;
+}
+
+function makeFullCircle(cx: number, cy: number, r: number) {
+  const path = Skia.Path.Make();
+  path.addArc({ x: cx - r, y: cy - r, width: r * 2, height: r * 2 }, 0, 360);
+  return path;
 }
 
 function positionInRange(date: Date, range: ScaleRange): number {
@@ -41,150 +46,161 @@ function positionInRange(date: Date, range: ScaleRange): number {
   return Math.max(0, Math.min(1, (date.getTime() - range.start.getTime()) / total));
 }
 
-export function CircularCalendar({ size, range, tasks, selectedSlice, onSlicePress, onTaskPress }: Props) {
+// Web版と同じ4層グロー
+function GlowArc({ path, color }: { path: ReturnType<typeof Skia.Path.Make>; color: string }) {
+  return (
+    <Group>
+      <Path path={path} style="stroke" strokeWidth={32} color={color} opacity={0.06} strokeCap="round">
+        <BlurMask blur={18} style="normal" />
+      </Path>
+      <Path path={path} style="stroke" strokeWidth={18} color={color} opacity={0.14} strokeCap="round">
+        <BlurMask blur={10} style="normal" />
+      </Path>
+      <Path path={path} style="stroke" strokeWidth={8} color={color} opacity={0.38} strokeCap="round">
+        <BlurMask blur={4} style="normal" />
+      </Path>
+      <Path path={path} style="stroke" strokeWidth={2} color={color} opacity={0.95} strokeCap="round" />
+    </Group>
+  );
+}
+
+function GlowDot({ x, y, r, color }: { x: number; y: number; r: number; color: string }) {
+  return (
+    <Group>
+      <Circle cx={x} cy={y} r={r * 5} color={color} opacity={0.12}>
+        <BlurMask blur={r * 3} style="normal" />
+      </Circle>
+      <Circle cx={x} cy={y} r={r * 2} color={color} opacity={0.35}>
+        <BlurMask blur={r} style="normal" />
+      </Circle>
+      <Circle cx={x} cy={y} r={r} color={color} />
+    </Group>
+  );
+}
+
+export function CircularCalendar({
+  size, range, tasks, selectedSlice, onSlicePress, onTaskPress,
+}: Props) {
+  const cx = size / 2, cy = size / 2;
+  const rGold = size * 0.415;
+  const rBlue = size * 0.345;
+  const rCenter = size * 0.185;
+
   const nowFrac = useMemo(() => {
     const now = new Date();
     if (now < range.start || now > range.end) return null;
-    return (now.getTime() - range.start.getTime()) / (range.end.getTime() - range.start.getTime());
+    return (now.getTime() - range.start.getTime()) /
+      (range.end.getTime() - range.start.getTime());
   }, [range]);
 
-  const onContextCreate = useCallback((gl: any) => {
-    const renderer = new THREE.WebGLRenderer({
-      canvas: {
-        width: gl.drawingBufferWidth,
-        height: gl.drawingBufferHeight,
-        style: {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        clientHeight: gl.drawingBufferHeight,
-        getContext: () => gl,
-      } as any,
-      context: gl,
-    });
-    renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
-    renderer.setClearColor(0x000000, 0);
+  const goldPath = useMemo(() =>
+    nowFrac != null && nowFrac > 0.002
+      ? makeArcPath(cx, cy, rGold, 0, nowFrac)
+      : null,
+    [cx, cy, rGold, nowFrac]);
 
-    const scene = new THREE.Scene();
-    const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
-    const camera = new THREE.OrthographicCamera(-1.3 * aspect, 1.3 * aspect, 1.3, -1.3, 0.1, 100);
-    camera.position.z = 5;
+  const bluePath = useMemo(() => {
+    const s = nowFrac ?? 0;
+    return s < 0.998 ? makeArcPath(cx, cy, rBlue, s, 1) : null;
+  }, [cx, cy, rBlue, nowFrac]);
 
-    const gold = new THREE.Color('#E8C56A');
-    const blue = new THREE.Color('#5A9BE8');
-    const white = new THREE.Color('#ffffff');
+  const baseGold = useMemo(() => makeFullCircle(cx, cy, rGold), [cx, cy, rGold]);
+  const baseBlue = useMemo(() => makeFullCircle(cx, cy, rBlue), [cx, cy, rBlue]);
 
-    // Guide circles
-    scene.add(makeGlowLine(makeArcPoints(0, 1, R_GOLD, 256), white, 0.07));
-    scene.add(makeGlowLine(makeArcPoints(0, 1, R_BLUE, 256), white, 0.06));
-
-    // Gold arc — 4 glow layers
-    if (nowFrac != null && nowFrac > 0.002) {
-      const pts = makeArcPoints(0, nowFrac, R_GOLD);
-      scene.add(makeGlowLine(pts, gold, 0.08));
-      scene.add(makeGlowLine(pts, gold, 0.18));
-      scene.add(makeGlowLine(pts, gold, 0.45));
-      scene.add(makeGlowLine(pts, gold, 1.0));
-    }
-
-    // Blue arc — 4 glow layers
-    const blueStart = nowFrac ?? 0;
-    if (blueStart < 0.998) {
-      const pts = makeArcPoints(blueStart, 1, R_BLUE);
-      scene.add(makeGlowLine(pts, blue, 0.08));
-      scene.add(makeGlowLine(pts, blue, 0.18));
-      scene.add(makeGlowLine(pts, blue, 0.45));
-      scene.add(makeGlowLine(pts, blue, 1.0));
-    }
-
-    // Task arcs
-    tasks.forEach(task => {
-      const s = new Date(task.start_at), e = new Date(task.end_at);
-      if (e <= range.start || s >= range.end) return;
-      const p1 = positionInRange(s, range), p2 = positionInRange(e, range);
-      const rMid = (R_GOLD + R_BLUE) / 2;
-      const pts = makeArcPoints(p1, p2, rMid, 48);
-      scene.add(makeGlowLine(pts, white, 0.25));
-      scene.add(makeGlowLine(pts, white, 0.6));
-    });
-
-    // Tick marks
+  const tickPath = useMemo(() => {
+    const p = Skia.Path.Make();
     for (let i = 0; i < N; i++) {
-      const a = fracToAngle(i / N);
-      const r1 = R_GOLD + 0.04, r2 = R_GOLD + (i % 6 === 0 ? 0.12 : 0.07);
-      const pts = [
-        new THREE.Vector3(r1 * Math.cos(a), r1 * Math.sin(a), 0),
-        new THREE.Vector3(r2 * Math.cos(a), r2 * Math.sin(a), 0),
-      ];
-      const geo = new THREE.BufferGeometry().setFromPoints(pts);
-      scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({
-        color: white, transparent: true, opacity: i % 6 === 0 ? 0.4 : 0.18,
-      })));
+      const a = fracToRad(i / N);
+      const r1 = rGold + 5;
+      const r2 = rGold + (i % 6 === 0 ? 20 : 11);
+      p.moveTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a));
+      p.lineTo(cx + r2 * Math.cos(a), cy + r2 * Math.sin(a));
     }
+    return p;
+  }, [cx, cy, rGold]);
 
-    // Now dots
-    if (nowFrac != null) {
-      const ga = fracToAngle(nowFrac), ba = fracToAngle(nowFrac);
-      const gDot = new THREE.Mesh(
-        new THREE.CircleGeometry(0.028, 16),
-        new THREE.MeshBasicMaterial({ color: gold })
-      );
-      gDot.position.set(R_GOLD * Math.cos(ga), R_GOLD * Math.sin(ga), 0.01);
-      scene.add(gDot);
+  const taskPaths = useMemo(() => tasks.map(task => {
+    const s = new Date(task.start_at), e = new Date(task.end_at);
+    if (e <= range.start || s >= range.end) return null;
+    const p1 = positionInRange(s, range), p2 = positionInRange(e, range);
+    return { task, path: makeArcPath(cx, cy, (rGold + rBlue) / 2, p1, p2) };
+  }).filter(Boolean) as { task: Task; path: ReturnType<typeof Skia.Path.Make> }[],
+    [tasks, range, cx, cy, rGold, rBlue]);
 
-      const bDot = new THREE.Mesh(
-        new THREE.CircleGeometry(0.022, 16),
-        new THREE.MeshBasicMaterial({ color: blue })
-      );
-      bDot.position.set(R_BLUE * Math.cos(ba), R_BLUE * Math.sin(ba), 0.01);
-      scene.add(bDot);
-    }
+  const nowGold = nowFrac != null ? polarXY(cx, cy, rGold, fracToRad(nowFrac)) : null;
+  const nowBlue = nowFrac != null ? polarXY(cx, cy, rBlue, fracToRad(nowFrac)) : null;
 
-    // Center disk
-    const disk = new THREE.Mesh(
-      new THREE.CircleGeometry(R_CENTER, 64),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color('#08061a') })
-    );
-    scene.add(disk);
-
-    // Center rim
-    scene.add(makeGlowLine(makeArcPoints(0, 1, R_CENTER, 128), white, 0.22));
-
-    // Shimmer
-    const shim = new THREE.Mesh(
-      new THREE.CircleGeometry(R_CENTER * 0.42, 32),
-      new THREE.MeshBasicMaterial({ color: white, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending })
-    );
-    shim.position.set(-R_CENTER * 0.2, R_CENTER * 0.28, 0.01);
-    shim.scale.set(1, 0.55, 1);
-    scene.add(shim);
-
-    renderer.render(scene, camera);
-    gl.endFrameEXP();
-  }, [nowFrac, tasks, range]);
-
-  // Hour label positions
-  const hourLabels = useMemo(() => {
-    const half = size / 2;
-    const rPx = half * R_GOLD;
-    return Array.from({ length: N / 2 }, (_, i) => {
-      const hr = i * 2;
-      const a = fracToAngle((hr + 0.5) / N);
-      const lr = rPx + 24;
-      return { hr, x: half + lr * Math.cos(a), y: half + lr * Math.sin(a), big: hr % 6 === 0 };
-    });
-  }, [size]);
+  const hourLabels = useMemo(() => Array.from({ length: N / 2 }, (_, i) => {
+    const hr = i * 2;
+    const a = fracToRad((hr + 0.5) / N);
+    const lr = rGold + 28;
+    return { hr, x: cx + lr * Math.cos(a), y: cy + lr * Math.sin(a), big: hr % 6 === 0 };
+  }), [cx, cy, rGold]);
 
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
-      <GLView style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
+      <Canvas style={StyleSheet.absoluteFill}>
 
-      {hourLabels.map(l => (
-        <Text key={l.hr} style={[styles.hour, { left: l.x - 14, top: l.y - 9 }, l.big ? styles.hourBig : styles.hourSm]}>
+        {/* Base guide circles */}
+        <Path path={baseGold} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.07)" />
+        <Path path={baseBlue} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.06)" />
+
+        {/* Task arcs */}
+        {taskPaths.map((t, i) => (
+          <Group key={i}>
+            <Path path={t.path} style="stroke" strokeWidth={12} color="rgba(255,255,255,0.07)" strokeCap="round">
+              <BlurMask blur={5} style="normal" />
+            </Path>
+            <Path path={t.path} style="stroke" strokeWidth={2} color="rgba(255,255,255,0.45)" strokeCap="round" />
+          </Group>
+        ))}
+
+        {/* Gold arc */}
+        {goldPath && <GlowArc path={goldPath} color="#E8C56A" />}
+
+        {/* Blue arc */}
+        {bluePath && <GlowArc path={bluePath} color="#5A9BE8" />}
+
+        {/* Ticks */}
+        <Path path={tickPath} style="stroke" strokeWidth={0.8} color="rgba(255,255,255,0.28)" />
+
+        {/* Now dots */}
+        {nowGold && <GlowDot x={nowGold.x} y={nowGold.y} r={3.5} color="#E8C56A" />}
+        {nowBlue && <GlowDot x={nowBlue.x} y={nowBlue.y} r={3} color="#5A9BE8" />}
+
+        {/* Center disk shadow */}
+        <Circle cx={cx} cy={cy + 5} r={rCenter + 4} color="rgba(0,0,0,0.5)">
+          <BlurMask blur={14} style="normal" />
+        </Circle>
+
+        {/* Center disk */}
+        <Circle cx={cx} cy={cy} r={rCenter} color="#07051a" />
+        <Circle cx={cx} cy={cy} r={rCenter} color="rgba(255,255,255,0.03)" />
+        <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.22)" />
+
+        {/* Center shimmer */}
+        <Circle cx={cx - rCenter * 0.22} cy={cy - rCenter * 0.3} r={rCenter * 0.4} color="rgba(255,255,255,0.07)">
+          <BlurMask blur={8} style="normal" />
+        </Circle>
+
+      </Canvas>
+
+      {/* Hour labels */}
+      {hourLabels.map((l) => (
+        <Text
+          key={l.hr}
+          style={[
+            styles.hour,
+            { left: l.x - 14, top: l.y - 9 },
+            l.big ? styles.hourBig : styles.hourSm,
+          ]}
+        >
           {l.hr}
         </Text>
       ))}
 
-      <View style={[styles.centerWrap, { top: size / 2 - 24, width: size }]}>
+      {/* Center label */}
+      <View style={[styles.centerWrap, { top: cy - 24, width: size }]}>
         <Text style={styles.centerTitle}>{range.label}</Text>
         <Text style={styles.centerSub}>{range.subLabel}</Text>
       </View>
