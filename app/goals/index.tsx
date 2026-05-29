@@ -213,31 +213,44 @@ function DecomposeModal({
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
       if (!supabaseUrl) throw new Error('Supabase URL が設定されていません');
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey,
-        },
-        body: JSON.stringify({
-          title: node.title,
-          target_value: node.target_value,
-          unit: node.unit,
-          target_date: node.target_date,
-          strategy_type: node.strategy_type,
-        }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+      let res: Response;
+      try {
+        res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+          },
+          body: JSON.stringify({
+            title: node.title,
+            target_value: node.target_value,
+            unit: node.unit,
+            target_date: node.target_date,
+            strategy_type: node.strategy_type,
+          }),
+        });
+      } finally {
+        clearTimeout(timeout);
       }
 
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('JSONパース失敗: ' + text.slice(0, 200));
+      }
+
       if (data.error) throw new Error(String(data.error));
       if (!data.subgoals || !Array.isArray(data.subgoals)) {
-        throw new Error('不正なレスポンス: ' + JSON.stringify(data).slice(0, 100));
+        throw new Error('不正なレスポンス: ' + JSON.stringify(data).slice(0, 150));
       }
       setResult(data as DecomposeResult);
     } catch (e: any) {

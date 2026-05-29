@@ -210,27 +210,70 @@ export function CircularCalendar({
           const midFrac = (s + e) / 2;
           const midA = fracToRad(midFrac);
           const orbitR = (rGold + rBlue) / 2;
-          const pr = Math.max(6, Math.min(22, dur * 320)); // planet radius from duration
+          const pr = Math.max(10, Math.min(26, dur * 380));
           const px = cx + orbitR * Math.cos(midA);
           const py = cy + orbitR * Math.sin(midA);
-          // faint orbit arc
           const orbitArcPath = makeArcPath(cx, cy, orbitR, s, e);
           return (
             <Group key={i}>
               {/* Faint orbit arc */}
-              <Path path={orbitArcPath} style="stroke" strokeWidth={0.8} color={taskColor} opacity={0.2} strokeCap="round" />
-              {/* Planet atmosphere */}
-              <Circle cx={px} cy={py} r={pr * 2.8} color={taskColor} opacity={0.08}>
-                <BlurMask blur={pr * 1.5} style="normal" />
+              <Path path={orbitArcPath} style="stroke" strokeWidth={0.6} color={taskColor} opacity={0.15} strokeCap="round" />
+
+              {/* Outer atmosphere halo */}
+              <Circle cx={px} cy={py} r={pr * 3.5} color={taskColor} opacity={0.04}>
+                <BlurMask blur={pr * 2.2} style="normal" />
               </Circle>
-              {/* Planet glow ring */}
-              <Circle cx={px} cy={py} r={pr * 1.4} color={taskColor} opacity={0.2}>
-                <BlurMask blur={pr * 0.5} style="outer" />
+
+              {/* Mid glow */}
+              <Circle cx={px} cy={py} r={pr * 1.8} color={taskColor} opacity={0.12}>
+                <BlurMask blur={pr * 0.8} style="normal" />
               </Circle>
-              {/* Planet core */}
-              <Circle cx={px} cy={py} r={pr} color={taskColor} opacity={0.9} />
-              {/* Highlight */}
-              <Circle cx={px - pr * 0.28} cy={py - pr * 0.28} r={pr * 0.32} color="rgba(255,255,255,0.45)" />
+
+              {/* Drop shadow */}
+              <Circle cx={px + pr * 0.1} cy={py + pr * 0.15} r={pr * 1.05} color="rgba(0,0,0,0.55)">
+                <BlurMask blur={pr * 0.4} style="normal" />
+              </Circle>
+
+              {/* Base sphere — near black */}
+              <Circle cx={px} cy={py} r={pr} color="#020108" />
+
+              {/* Internal color volume — deep and subtle */}
+              <Circle cx={px + pr * 0.08} cy={py + pr * 0.08} r={pr * 0.82} color={taskColor} opacity={0.18}>
+                <BlurMask blur={pr * 0.5} style="normal" />
+              </Circle>
+
+              {/* Refraction darker zone */}
+              <Circle cx={px + pr * 0.15} cy={py - pr * 0.05} r={pr * 0.58} color="rgba(0,0,0,0.4)">
+                <BlurMask blur={pr * 0.3} style="normal" />
+              </Circle>
+
+              {/* Large soft highlight — upper left (main light source) */}
+              <Circle cx={px - pr * 0.25} cy={py - pr * 0.28} r={pr * 0.48} color="rgba(255,255,255,0.18)">
+                <BlurMask blur={pr * 0.22} style="normal" />
+              </Circle>
+
+              {/* Bright specular core */}
+              <Circle cx={px - pr * 0.28} cy={py - pr * 0.32} r={pr * 0.16} color="rgba(255,255,255,0.65)">
+                <BlurMask blur={pr * 0.07} style="normal" />
+              </Circle>
+
+              {/* Right rim light — colored */}
+              <Circle cx={px + pr * 0.55} cy={py + pr * 0.1} r={pr * 0.38} color={taskColor} opacity={0.22}>
+                <BlurMask blur={pr * 0.22} style="normal" />
+              </Circle>
+
+              {/* Bottom darkening */}
+              <Circle cx={px} cy={py + pr * 0.42} r={pr * 0.55} color="rgba(0,0,0,0.5)">
+                <BlurMask blur={pr * 0.28} style="normal" />
+              </Circle>
+
+              {/* Glass rim stroke — very subtle */}
+              <Circle cx={px} cy={py} r={pr - 0.5} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.1)" />
+
+              {/* Outer rim glow */}
+              <Circle cx={px} cy={py} r={pr} style="stroke" strokeWidth={pr * 0.04} color={taskColor} opacity={0.3}>
+                <BlurMask blur={pr * 0.08} style="outer" />
+              </Circle>
             </Group>
           );
         })}
