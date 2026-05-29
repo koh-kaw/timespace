@@ -168,7 +168,7 @@ function GoalRow({
             <Text style={styles.iconBtnText}>＋</Text>
           </Pressable>
           <Pressable onPress={() => onDelete(node.id)} style={styles.iconBtn}>
-            <Text style={[styles.iconBtnText, { color: '#A32D2D' }]}>×</Text>
+            <Text style={[styles.iconBtnText, { color: '#FF6B6B' }]}>×</Text>
           </Pressable>
         </View>
       </View>
@@ -266,7 +266,7 @@ function DecomposeModal({
 
           {error ? (
             <View style={{ padding: 16 }}>
-              <Text style={{ color: '#A32D2D', marginBottom: 12 }}>{error}</Text>
+              <Text style={{ color: '#FF6B6B', marginBottom: 12 }}>{error}</Text>
               <Pressable onPress={runDecompose} style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>再試行</Text>
               </Pressable>
@@ -482,71 +482,71 @@ async function saveGoalTree(
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFF' },
+  safe: { flex: 1, backgroundColor: '#000000' },
   header: { padding: 16, paddingTop: 8, borderBottomWidth: 0.5, borderBottomColor: '#E2E0D8' },
-  headerTitle: { fontSize: 16, fontWeight: '600', color: '#2C2C2A' },
-  headerSub: { fontSize: 12, color: '#888780', marginTop: 3 },
+  headerTitle: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.88)' },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 3 },
   list: { padding: 12, paddingBottom: 40 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#2C2C2A', marginBottom: 6 },
-  emptySub: { fontSize: 14, color: '#888780', marginBottom: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.88)', marginBottom: 6 },
+  emptySub: { fontSize: 14, color: 'rgba(255,255,255,0.35)', marginBottom: 24 },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#F7F6F2',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     marginBottom: 8,
   },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: '#2C2C2A', marginBottom: 4 },
-  rowMeta: { fontSize: 12, color: '#888780', marginBottom: 6 },
+  rowTitle: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.88)', marginBottom: 4 },
+  rowMeta: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 6 },
   progressBg: { height: 4, backgroundColor: '#E2E0D8', borderRadius: 2, marginBottom: 8 },
-  progressFill: { height: 4, backgroundColor: '#7F77DD', borderRadius: 2 },
+  progressFill: { height: 4, backgroundColor: 'rgba(232,197,106,0.85)', borderRadius: 2 },
   aiBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EEEDFE',
+    backgroundColor: 'rgba(232,197,106,0.15)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#CECBF6',
+    borderColor: 'rgba(232,197,106,0.3)',
   },
-  aiBtnText: { fontSize: 12, color: '#534AB7', fontWeight: '600' },
+  aiBtnText: { fontSize: 12, color: '#E8C56A', fontWeight: '600' },
   rowActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },
   iconBtn: { padding: 6 },
-  iconBtnText: { fontSize: 20, color: '#7F77DD', lineHeight: 24 },
+  iconBtnText: { fontSize: 20, color: '#E8C56A', lineHeight: 24 },
   addRow: { padding: 14, alignItems: 'center' },
-  addRowText: { color: '#7F77DD', fontSize: 14, fontWeight: '500' },
+  addRowText: { color: '#E8C56A', fontSize: 14, fontWeight: '500' },
 
   // Decompose modal
   decomposeBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   decomposeSheet: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#000000',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
   },
   handle: { width: 36, height: 4, backgroundColor: '#D3D1C7', borderRadius: 2, alignSelf: 'center', marginTop: 10 },
-  decomposeTitle: { fontSize: 18, fontWeight: '700', color: '#2C2C2A', paddingHorizontal: 20, paddingTop: 16, marginBottom: 4 },
-  decomposeGoal: { fontSize: 14, color: '#7F77DD', paddingHorizontal: 20, marginBottom: 12 },
+  decomposeTitle: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.88)', paddingHorizontal: 20, paddingTop: 16, marginBottom: 4 },
+  decomposeGoal: { fontSize: 14, color: '#E8C56A', paddingHorizontal: 20, marginBottom: 12 },
   loadingArea: { alignItems: 'center', padding: 48, gap: 16 },
-  loadingText: { fontSize: 14, color: '#888780' },
+  loadingText: { fontSize: 14, color: 'rgba(255,255,255,0.35)' },
   todayBox: {
-    backgroundColor: '#EEEDFE',
+    backgroundColor: 'rgba(232,197,106,0.15)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: '#7F77DD',
+    borderLeftColor: '#E8C56A',
   },
-  todayLabel: { fontSize: 12, color: '#534AB7', fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
-  todayAction: { fontSize: 15, color: '#26215C', fontWeight: '500', lineHeight: 22 },
-  decomposeSectionLabel: { fontSize: 12, color: '#888780', fontWeight: '600', textTransform: 'uppercase', marginBottom: 10 },
+  todayLabel: { fontSize: 12, color: '#E8C56A', fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
+  todayAction: { fontSize: 15, color: '#E8C56A', fontWeight: '500', lineHeight: 22 },
+  decomposeSectionLabel: { fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '600', textTransform: 'uppercase', marginBottom: 10 },
   subgoalRow: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#F7F6F2',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 8,
     marginBottom: 4,
     flexDirection: 'row',
@@ -554,28 +554,28 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  subgoalHorizon: { fontSize: 11, color: '#7F77DD', fontWeight: '700', minWidth: 48 },
-  subgoalTitle: { fontSize: 14, color: '#2C2C2A', flex: 1 },
-  subgoalValue: { fontSize: 12, color: '#888780' },
+  subgoalHorizon: { fontSize: 11, color: '#E8C56A', fontWeight: '700', minWidth: 48 },
+  subgoalTitle: { fontSize: 14, color: 'rgba(255,255,255,0.88)', flex: 1 },
+  subgoalValue: { fontSize: 12, color: 'rgba(255,255,255,0.35)' },
 
   // Shared
-  label: { fontSize: 12, color: '#888780', fontWeight: '600', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '600', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input: {
-    borderWidth: 1, borderColor: '#E8E6DF', borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11, fontSize: 15,
-    backgroundColor: '#FAFAF8', color: '#2C2C2A',
+    backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.88)',
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#E8E6DF', backgroundColor: '#FAFAF8' },
-  chipSelected: { backgroundColor: '#EEEDFE', borderColor: '#7F77DD' },
-  chipText: { fontSize: 13, color: '#5F5E5A' },
-  chipTextSelected: { color: '#26215C', fontWeight: '600' },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
+  chipSelected: { backgroundColor: 'rgba(232,197,106,0.15)', borderColor: 'rgba(232,197,106,0.5)' },
+  chipText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
+  chipTextSelected: { color: '#E8C56A', fontWeight: '600' },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   btn: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10 },
-  btnPrimary: { backgroundColor: '#7F77DD' },
-  btnPrimaryText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-  btnSecondary: { backgroundColor: '#F1EFE8' },
-  btnSecondaryText: { color: '#444441', fontSize: 14 },
-  primaryBtn: { backgroundColor: '#7F77DD', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12 },
-  primaryBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
+  btnPrimary: { backgroundColor: 'rgba(232,197,106,0.85)' },
+  btnPrimaryText: { color: '#000', fontWeight: '600', fontSize: 14 },
+  btnSecondary: { backgroundColor: 'rgba(255,255,255,0.05)' },
+  btnSecondaryText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
+  primaryBtn: { backgroundColor: 'rgba(232,197,106,0.85)', paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12 },
+  primaryBtnText: { color: '#000', fontWeight: '600', fontSize: 15 },
 });
