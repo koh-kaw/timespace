@@ -29,7 +29,9 @@
     "react-native-svg": "15.2.0",
     "react-native-url-polyfill": "^2.0.0",
     "rrule": "^2.8.1",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "expo-gl": "~14.0.2",
+    "expo-three": "^8.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
