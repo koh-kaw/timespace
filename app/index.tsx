@@ -63,8 +63,25 @@ export default function Home() {
       if (adx < 20 && ady < 20) return; // too small
 
       if (adx > ady) {
-        // horizontal: prev/next day (or week/month)
-        if (drillStack.length === 0) {
+        if (drillStack.length > 0) {
+          // In drill: move to sibling task (prev/next by start time)
+          const currentTask = drillStack[drillStack.length - 1];
+          const parentTasks = drillStack.length === 1 ? tasksRef.current : [];
+          // Sort siblings by start time
+          const siblings = [...parentTasks].sort(
+            (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+          );
+          const currentIdx = siblings.findIndex(t => t.id === currentTask.id);
+          if (currentIdx !== -1) {
+            const targetIdx = dx < 0 ? currentIdx + 1 : currentIdx - 1;
+            if (targetIdx >= 0 && targetIdx < siblings.length) {
+              // Pop current and push sibling
+              popDrill();
+              setTimeout(() => pushDrill(siblings[targetIdx]), 50);
+            }
+          }
+        } else {
+          // No drill: prev/next day
           setAnchor(shiftAnchor(anchorDate, scaleKind, dx < 0 ? 1 : -1));
         }
       } else {
