@@ -214,48 +214,75 @@ function DecomposeModal({
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
       if (!supabaseUrl) throw new Error('Supabase URL が設定されていません');
 
-      setDebug('fetch開始...');
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
+      setDebug('AI に接続中...');
 
-      let res: Response;
-      try {
-        res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-            'apikey': supabaseKey,
-          },
-          body: JSON.stringify({
-            title: node.title,
-            target_value: node.target_value,
-            unit: node.unit,
-            target_date: node.target_date,
-            strategy_type: node.strategy_type,
-          }),
-        });
-      } finally {
-        clearTimeout(timeout);
+      const payload = JSON.stringify({
+        title: node.title,
+        target_value: node.target_value,
+        unit: node.unit,
+        target_date: node.target_date,
+        strategy_type: node.strategy_type,
+      });
+
+      // Retry up to 3 times (EarlyDrop対策)
+      let lastErr = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          setDebug(`再試行中 (${attempt + 1}/3)...`);
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 35000);
+
+          let res: Response;
+          try {
+            res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
+              method: 'POST',
+              signal: controller.signal,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+              },
+              body: payload,
+            });
+          } finally {
+            clearTimeout(timeout);
+          }
+
+          const text = await res.text();
+          setDebug(`HTTP ${res.status}`);
+
+          if (!res.ok) {
+            lastErr = `HTTP ${res.status}: ${text.slice(0, 200)}`;
+            continue; // retry
+          }
+
+          let data: any;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            lastErr = 'JSONパース失敗: ' + text.slice(0, 100);
+            continue;
+          }
+
+          if (data.error) { lastErr = String(data.error); continue; }
+          if (!data.subgoals || !Array.isArray(data.subgoals)) {
+            lastErr = '不正なレスポンス: ' + JSON.stringify(data).slice(0, 100);
+            continue;
+          }
+
+          setResult(data as DecomposeResult);
+          return; // success
+        } catch (fetchErr: any) {
+          lastErr = fetchErr?.message || String(fetchErr);
+          if (lastErr.includes('aborted')) lastErr = 'タイムアウト(35秒)';
+        }
       }
 
-      const text = await res.text();
-      setDebug(`HTTP ${res.status} / ${text.slice(0, 80)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
-
-      let data: any;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('JSONパース失敗: ' + text.slice(0, 200));
-      }
-
-      if (data.error) throw new Error(String(data.error));
-      if (!data.subgoals || !Array.isArray(data.subgoals)) {
-        throw new Error('不正なレスポンス: ' + JSON.stringify(data).slice(0, 150));
-      }
-      setResult(data as DecomposeResult);
+      throw new Error(lastErr || '3回試行しましたが失敗しました');
     } catch (e: any) {
       setError('エラー: ' + (e?.message || String(e)));
     } finally {
