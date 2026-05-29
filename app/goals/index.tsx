@@ -54,7 +54,7 @@ export default function Goals() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#7F77DD" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#E8C56A" style={{ marginTop: 40 }} />
       ) : tree.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🎯</Text>
@@ -196,13 +196,14 @@ function DecomposeModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);  // start loading immediately
   const [result, setResult] = useState<DecomposeResult | null>(null);
   const [error, setError] = useState('');
-  const [debug, setDebug] = useState('');
+  const [debug, setDebug] = useState('AI に接続中...');
 
   useEffect(() => {
-    runDecompose();
+    const timer = setTimeout(() => { runDecompose(); }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   async function runDecompose() {
@@ -312,7 +313,7 @@ function DecomposeModal({
 
           {loading && (
             <View style={styles.loadingArea}>
-              <ActivityIndicator color="#7F77DD" size="large" />
+              <ActivityIndicator color="#E8C56A" size="large" />
               <Text style={styles.loadingText}>AIが逆算中…</Text>
             </View>
           )}
