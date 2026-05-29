@@ -82,10 +82,16 @@ export default function Home() {
   }
 
   const screenWidth = Dimensions.get('window').width;
-  const canvasSize = Math.min(screenWidth - 24, 380);
+  const canvasSize = Math.min(screenWidth - 16, 400);
 
   const sliceTime =
     selectedSlice != null ? sliceToTimeRange(selectedSlice, range) : null;
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingTask(null);
+    setSelectedSlice(null);
+  };
 
   const onSlicePress = (i: number) => {
     setSelectedSlice(i);
@@ -94,6 +100,7 @@ export default function Home() {
   };
 
   const onTaskPress = (task: Task) => {
+    setSelectedSlice(null);
     setEditingTask(task);
     setModalOpen(true);
   };
@@ -119,9 +126,7 @@ export default function Home() {
           parent_id: parentId,
         });
       }
-      setModalOpen(false);
-      setEditingTask(null);
-      setSelectedSlice(null);
+      closeModal();
       await loadTasks();
     } catch (err) {
       console.error('[onSubmitTask]', err);
@@ -132,8 +137,7 @@ export default function Home() {
     if (!editingTask) return;
     try {
       await deleteTask(editingTask.id);
-      setModalOpen(false);
-      setEditingTask(null);
+      closeModal();
       await loadTasks();
     } catch (err) {
       console.error('[onDeleteTask]', err);
@@ -141,11 +145,9 @@ export default function Home() {
   };
 
   const onDrillIn = () => {
-    if (editingTask) {
-      pushDrill(editingTask);
-      setModalOpen(false);
-      setEditingTask(null);
-    }
+    if (!editingTask) return;
+    pushDrill(editingTask);
+    closeModal();
   };
 
   return (
@@ -155,7 +157,7 @@ export default function Home() {
         scaleLabel={range.label}
         scaleSubLabel={range.subLabel}
         breadcrumb={[
-          range.kind === 'day' && drillStack.length === 0 ? '1日' : range.label,
+          drillStack.length === 0 ? range.label : range.label,
           ...drillStack.map((t) => t.title),
         ]}
         canZoomUp={!!zoomOut(scaleKind) || drillStack.length > 0}
@@ -182,71 +184,62 @@ export default function Home() {
           onSlicePress={onSlicePress}
           onTaskPress={onTaskPress}
         />
-        {loading ? (
-          <ActivityIndicator style={styles.loader} color="#7F77DD" />
-        ) : null}
+        {loading && (
+          <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#7F77DD" />
+        )}
       </View>
 
       <View style={styles.footer}>
         <Link href="/goals" asChild>
           <Pressable style={styles.footerBtn}>
-            <Text style={styles.footerBtnText}>目標</Text>
+            <Text style={styles.footerBtnText}>🎯 目標</Text>
           </Pressable>
         </Link>
         <Link href="/settings" asChild>
           <Pressable style={styles.footerBtn}>
-            <Text style={styles.footerBtnText}>設定</Text>
+            <Text style={styles.footerBtnText}>⚙ 設定</Text>
           </Pressable>
         </Link>
       </View>
 
       <TaskFormModal
         visible={modalOpen}
-        startAt={sliceTime?.start || (editingTask ? new Date(editingTask.start_at) : new Date())}
-        endAt={sliceTime?.end || (editingTask ? new Date(editingTask.end_at) : new Date())}
-        initialTitle={editingTask?.title || ''}
-        initialNotes={editingTask?.notes || ''}
+        startAt={
+          sliceTime?.start ?? (editingTask ? new Date(editingTask.start_at) : new Date())
+        }
+        endAt={
+          sliceTime?.end ?? (editingTask ? new Date(editingTask.end_at) : new Date())
+        }
+        initialTitle={editingTask?.title ?? ''}
+        initialNotes={editingTask?.notes ?? ''}
         initialNotificationMinutesBefore={editingTask?.notification_minutes_before ?? null}
         initialRecurrence={editingTask?.recurrence_rule ?? null}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingTask(null);
-          setSelectedSlice(null);
-        }}
+        isEditing={!!editingTask}
+        onClose={closeModal}
         onSubmit={onSubmitTask}
         onDelete={editingTask ? onDeleteTask : undefined}
+        onDrillIn={editingTask ? onDrillIn : undefined}
       />
-
-      {editingTask ? (
-        <Pressable style={styles.drillFab} onPress={onDrillIn}>
-          <Text style={styles.drillFabText}>奥行きへ ↓</Text>
-        </Pressable>
-      ) : null}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  canvas: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 12 },
-  loader: { position: 'absolute', top: 20 },
+  canvas: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderTopWidth: 0.5,
-    borderTopColor: '#D3D1C7',
+    borderTopColor: '#E2E0D8',
+    backgroundColor: '#FFFFFF',
   },
   footerBtn: { paddingVertical: 8, paddingHorizontal: 24 },
   footerBtnText: { color: '#444441', fontSize: 14 },
-  drillFab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 80,
-    backgroundColor: '#7F77DD',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-  },
-  drillFabText: { color: '#FFF', fontWeight: '500' },
 });

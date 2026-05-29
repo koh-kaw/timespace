@@ -19,6 +19,7 @@ type Props = {
   initialRecurrence?: string | null;
   startAt: Date;
   endAt: Date;
+  isEditing: boolean;
   onClose: () => void;
   onSubmit: (payload: {
     title: string;
@@ -27,6 +28,7 @@ type Props = {
     recurrence_rule: string | null;
   }) => void;
   onDelete?: () => void;
+  onDrillIn?: () => void;
 };
 
 const NOTIFICATION_OPTIONS = [
@@ -54,9 +56,11 @@ export function TaskFormModal({
   initialRecurrence = null,
   startAt,
   endAt,
+  isEditing,
   onClose,
   onSubmit,
   onDelete,
+  onDrillIn,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
@@ -81,17 +85,22 @@ export function TaskFormModal({
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-            <Text style={styles.timeRange}>
-              {formatRange(startAt, endAt)}
-            </Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.timeRange}>{formatRange(startAt, endAt)}</Text>
+              {isEditing && onDrillIn && (
+                <Pressable onPress={onDrillIn} style={styles.drillBtn}>
+                  <Text style={styles.drillBtnText}>奥行きへ ↓</Text>
+                </Pressable>
+              )}
+            </View>
 
             <Text style={styles.label}>件名</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
-              placeholder="家の掃除"
+              placeholder="例：家の掃除"
               style={styles.input}
-              autoFocus
+              autoFocus={!isEditing}
             />
 
             <Text style={styles.label}>メモ</Text>
@@ -135,11 +144,11 @@ export function TaskFormModal({
             </View>
 
             <View style={styles.actions}>
-              {onDelete ? (
+              {onDelete && (
                 <Pressable onPress={onDelete} style={[styles.btn, styles.btnDanger]}>
                   <Text style={styles.btnDangerText}>削除</Text>
                 </Pressable>
-              ) : null}
+              )}
               <Pressable onPress={onClose} style={[styles.btn, styles.btnSecondary]}>
                 <Text style={styles.btnSecondaryText}>キャンセル</Text>
               </Pressable>
@@ -168,18 +177,20 @@ export function TaskFormModal({
 function formatRange(start: Date, end: Date): string {
   const f = (d: Date) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const sameDay = start.toDateString() === end.toDateString();
-  if (sameDay) return `${start.getMonth() + 1}/${start.getDate()} ${f(start)} - ${f(end)}`;
-  return `${start.getMonth() + 1}/${start.getDate()} ${f(start)} - ${end.getMonth() + 1}/${end.getDate()} ${f(end)}`;
+  return `${start.getMonth() + 1}/${start.getDate()} ${f(start)} - ${f(end)}`;
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '92%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   handle: {
     width: 36,
@@ -187,39 +198,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#D3D1C7',
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    marginBottom: 4,
   },
-  body: { padding: 20, paddingBottom: 40 },
-  timeRange: { fontSize: 13, color: '#888780', marginBottom: 12 },
-  label: { fontSize: 13, color: '#5F5E5A', marginTop: 12, marginBottom: 6 },
-  input: {
-    borderWidth: 0.5,
-    borderColor: '#D3D1C7',
-    borderRadius: 8,
+  body: { padding: 20, paddingBottom: 48 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  timeRange: { fontSize: 13, color: '#888780' },
+  drillBtn: {
+    backgroundColor: '#7F77DD',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    backgroundColor: '#FFF',
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-  textarea: { minHeight: 72, textAlignVertical: 'top' },
+  drillBtnText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  label: { fontSize: 12, color: '#888780', marginTop: 14, marginBottom: 6, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E8E6DF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+    backgroundColor: '#FAFAF8',
+    color: '#2C2C2A',
+  },
+  textarea: { minHeight: 76, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: '#D3D1C7',
-    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E8E6DF',
+    backgroundColor: '#FAFAF8',
   },
-  chipSelected: { backgroundColor: '#CECBF6', borderColor: '#7F77DD' },
+  chipSelected: { backgroundColor: '#EEEDFE', borderColor: '#7F77DD' },
   chipText: { fontSize: 13, color: '#5F5E5A' },
-  chipTextSelected: { color: '#26215C', fontWeight: '500' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 20 },
-  btn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  chipTextSelected: { color: '#26215C', fontWeight: '600' },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 24 },
+  btn: { paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10 },
   btnPrimary: { backgroundColor: '#7F77DD' },
-  btnPrimaryText: { color: '#FFF', fontWeight: '500' },
+  btnPrimaryText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
   btnSecondary: { backgroundColor: '#F1EFE8' },
-  btnSecondaryText: { color: '#444441' },
-  btnDanger: { backgroundColor: '#FCEBEB' },
-  btnDangerText: { color: '#A32D2D' },
+  btnSecondaryText: { color: '#444441', fontSize: 14 },
+  btnDanger: { backgroundColor: '#FCEBEB', marginRight: 'auto' },
+  btnDangerText: { color: '#A32D2D', fontSize: 14 },
 });
