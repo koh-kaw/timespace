@@ -16,6 +16,14 @@ type Props = {
 };
 
 const N = 24;
+const TASK_COLORS = [
+  '#A78BFA', // violet
+  '#34D399', // emerald
+  '#F472B6', // pink
+  '#60A5FA', // blue
+  '#FBBF24', // amber
+  '#F87171', // red
+];
 
 function fracToRad(f: number) {
   return f * Math.PI * 2 - Math.PI / 2;
@@ -191,14 +199,23 @@ export function CircularCalendar({
           <Path path={selectedPath} style="stroke" strokeWidth={rGold - rBlue} color="rgba(255,255,255,0.07)" />
         )}
 
-        {taskPaths.map((t, i) => (
-          <Group key={i}>
-            <Path path={t.path} style="stroke" strokeWidth={4} color="rgba(255,255,255,0.06)" strokeCap="round">
-              <BlurMask blur={4} style="outer" />
-            </Path>
-            <Path path={t.path} style="stroke" strokeWidth={1} color="rgba(255,255,255,0.5)" strokeCap="round" />
-          </Group>
-        ))}
+        {taskPaths.map((t, i) => {
+          const taskColor = TASK_COLORS[i % TASK_COLORS.length];
+          return (
+            <Group key={i}>
+              {/* Wide outer glow */}
+              <Path path={t.path} style="stroke" strokeWidth={rGold - rBlue + 8} color={taskColor} opacity={0.08} strokeCap="round">
+                <BlurMask blur={14} style="outer" />
+              </Path>
+              {/* Mid glow */}
+              <Path path={t.path} style="stroke" strokeWidth={8} color={taskColor} opacity={0.2} strokeCap="round">
+                <BlurMask blur={5} style="outer" />
+              </Path>
+              {/* Sharp core */}
+              <Path path={t.path} style="stroke" strokeWidth={2} color={taskColor} opacity={0.9} strokeCap="round" />
+            </Group>
+          );
+        })}
 
         {goldPath && <GlowArc path={goldPath} color="#E8C56A" />}
         {bluePath && <GlowArc path={bluePath} color="#5A9BE8" />}
@@ -242,6 +259,27 @@ export function CircularCalendar({
         }}
       />
 
+      {/* Task labels */}
+      {taskPaths.map((t, i) => {
+        const taskColor = TASK_COLORS[i % TASK_COLORS.length];
+        const s = positionInRange(new Date(t.task.start_at), range);
+        const e = positionInRange(new Date(t.task.end_at), range);
+        const midFrac = (s + e) / 2;
+        const midA = fracToRad(midFrac);
+        const midR = (rGold + rBlue) / 2;
+        const lx = cx + midR * Math.cos(midA) - 24;
+        const ly = cy + midR * Math.sin(midA) - 8;
+        return (
+          <Text
+            key={`task-lbl-${t.task.id}`}
+            style={[styles.taskLabel, { left: lx, top: ly, color: taskColor }]}
+            onPress={() => onTaskPress(t.task)}
+          >
+            {t.task.title.length > 4 ? t.task.title.slice(0, 4) + '…' : t.task.title}
+          </Text>
+        );
+      })}
+
       {/* Hour labels */}
       {hourLabels.map((l) => (
         <Text key={l.hr} style={[styles.hour, { left: l.x - 14, top: l.y - 9 }, l.big ? styles.hourBig : styles.hourSm]}>
@@ -266,4 +304,5 @@ const styles = StyleSheet.create({
   centerWrap: { position: 'absolute', alignItems: 'center' },
   centerTitle: { fontSize: 26, fontWeight: '200', color: 'rgba(255,255,255,0.88)', letterSpacing: 3 },
   centerSub:   { fontSize: 10, fontWeight: '200', color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginTop: 5 },
+  taskLabel: { position: 'absolute', width: 48, textAlign: 'center', fontSize: 10, fontWeight: '500' },
 });
