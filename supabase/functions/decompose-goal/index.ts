@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       '\n\nこの目標を10年→1年→1ヶ月→1週間→今日の具体的アクションまで逆算で分解してください。';
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       system: `あなたは目標達成の専門家です。ユーザーの目標を受け取り、それを階層的に分解してください。必ずJSON形式のみで返してください。前置きや説明は不要です。
 フォーマット:
