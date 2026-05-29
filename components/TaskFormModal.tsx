@@ -12,6 +12,9 @@ type Props = {
   initialRecurrence?: string | null;
   startAt: Date;
   endAt: Date;
+  /** If set, restricts the time pickers to this parent range */
+  parentStart?: Date;
+  parentEnd?: Date;
   isEditing: boolean;
   onClose: () => void;
   onSubmit: (payload: {
@@ -49,7 +52,7 @@ function roundMin(m: number) { return Math.round(m / 5) * 5 % 60; }
 export function TaskFormModal({
   visible, initialTitle = '', initialNotes = '',
   initialNotificationMinutesBefore = null, initialRecurrence = null,
-  startAt, endAt, isEditing, onClose, onSubmit, onDelete, onDrillIn,
+  startAt, endAt, parentStart, parentEnd, isEditing, onClose, onSubmit, onDelete, onDrillIn,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
@@ -68,6 +71,30 @@ export function TaskFormModal({
       setEndH(endAt.getHours()); setEndM(roundMin(endAt.getMinutes()));
     }
   }, [visible, initialTitle, initialNotes, initialNotificationMinutesBefore, initialRecurrence, startAt, endAt]);
+
+  // Parent range constraints
+  const minAllowedH = parentStart ? parentStart.getHours() : 0;
+  const minAllowedM = parentStart ? parentStart.getMinutes() : 0;
+  const maxAllowedH = parentEnd ? parentEnd.getHours() : 23;
+  const maxAllowedM = parentEnd ? parentEnd.getMinutes() : 55;
+
+  const HOURS_FILTERED = parentStart && parentEnd
+    ? HOURS.filter(h => h >= minAllowedH && h <= maxAllowedH)
+    : HOURS;
+  const startMinutes_filtered = parentStart && parentEnd
+    ? MINUTES.filter(m => {
+        if (startH === minAllowedH && m < minAllowedM) return false;
+        if (startH === maxAllowedH && m > maxAllowedM) return false;
+        return true;
+      })
+    : MINUTES;
+  const endMinutes_filtered = parentStart && parentEnd
+    ? MINUTES.filter(m => {
+        if (endH === minAllowedH && m < minAllowedM) return false;
+        if (endH === maxAllowedH && m > maxAllowedM) return false;
+        return true;
+      })
+    : MINUTES;
 
   const totalMin = (endH * 60 + endM) - (startH * 60 + startM);
   const durationLabel = totalMin > 0
@@ -104,12 +131,15 @@ export function TaskFormModal({
             {/* Time picker */}
             <View style={styles.timePicker}>
               <TimeBlock label="開始" h={startH} m={startM}
+                hours={HOURS_FILTERED} minutes={startMinutes_filtered}
                 onH={(v) => { setStartH(v); if (v * 60 + startM >= endH * 60 + endM) setEndH(v + 1 < 24 ? v + 1 : v); }}
                 onM={(v) => setStartM(v)} />
               <View style={styles.durationBadge}>
                 <Text style={styles.durationText}>{durationLabel}</Text>
               </View>
-              <TimeBlock label="終了" h={endH} m={endM} onH={setEndH} onM={setEndM} />
+              <TimeBlock label="終了" h={endH} m={endM}
+                hours={HOURS_FILTERED} minutes={endMinutes_filtered}
+                onH={setEndH} onM={setEndM} />
             </View>
 
             <Text style={styles.label}>件名</Text>
@@ -168,17 +198,18 @@ export function TaskFormModal({
   );
 }
 
-function TimeBlock({ label, h, m, onH, onM }: {
+function TimeBlock({ label, h, m, hours = HOURS, minutes = MINUTES, onH, onM }: {
   label: string; h: number; m: number;
+  hours?: number[]; minutes?: number[];
   onH: (v: number) => void; onM: (v: number) => void;
 }) {
   return (
     <View style={styles.timeBlock}>
       <Text style={styles.timeBlockLabel}>{label}</Text>
       <View style={styles.timeSelectors}>
-        <TimeScroller values={HOURS} selected={h} onSelect={onH} format={v => String(v).padStart(2,'0')} unit="時" />
+        <TimeScroller values={hours} selected={h} onSelect={onH} format={v => String(v).padStart(2,'0')} unit="時" />
         <Text style={styles.timeSep}>:</Text>
-        <TimeScroller values={MINUTES} selected={m} onSelect={onM} format={v => String(v).padStart(2,'0')} unit="分" />
+        <TimeScroller values={minutes} selected={m} onSelect={onM} format={v => String(v).padStart(2,'0')} unit="分" />
       </View>
     </View>
   );

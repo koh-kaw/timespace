@@ -151,6 +151,8 @@ export default function Home() {
           visible={modalOpen}
           startAt={sliceTime?.start ?? (editingTask ? new Date(editingTask.start_at) : new Date())}
           endAt={sliceTime?.end ?? (editingTask ? new Date(editingTask.end_at) : new Date())}
+          parentStart={drillStack.length > 0 ? new Date(drillStack[drillStack.length-1].start_at) : undefined}
+          parentEnd={drillStack.length > 0 ? new Date(drillStack[drillStack.length-1].end_at) : undefined}
           initialTitle={editingTask?.title ?? ''}
           initialNotes={editingTask?.notes ?? ''}
           initialNotificationMinutesBefore={editingTask?.notification_minutes_before ?? null}

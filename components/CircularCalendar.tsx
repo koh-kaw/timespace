@@ -210,70 +210,62 @@ export function CircularCalendar({
           const midFrac = (s + e) / 2;
           const midA = fracToRad(midFrac);
           const orbitR = (rGold + rBlue) / 2;
-          const pr = Math.max(10, Math.min(26, dur * 380));
+          // Arc width matches the ring gap; planet size = arc chord length approx
+          const ringGap = rGold - rBlue;
+          const arcLen = dur * 2 * Math.PI * orbitR; // arc length in px
+          const pr = Math.max(ringGap * 0.38, Math.min(ringGap * 0.72, arcLen * 0.18));
           const px = cx + orbitR * Math.cos(midA);
           const py = cy + orbitR * Math.sin(midA);
-          const orbitArcPath = makeArcPath(cx, cy, orbitR, s, e);
+          const arcPath = makeArcPath(cx, cy, orbitR, s, e);
+
           return (
             <Group key={i}>
-              {/* Faint orbit arc */}
-              <Path path={orbitArcPath} style="stroke" strokeWidth={0.6} color={taskColor} opacity={0.15} strokeCap="round" />
+              {/* Main glow arc (like before) */}
+              <Path path={arcPath} style="stroke" strokeWidth={ringGap * 0.9} color={taskColor} opacity={0.07} strokeCap="round">
+                <BlurMask blur={12} style="outer" />
+              </Path>
+              <Path path={arcPath} style="stroke" strokeWidth={6} color={taskColor} opacity={0.22} strokeCap="round">
+                <BlurMask blur={4} style="outer" />
+              </Path>
+              <Path path={arcPath} style="stroke" strokeWidth={1.5} color={taskColor} opacity={0.9} strokeCap="round" />
 
-              {/* Outer atmosphere halo */}
-              <Circle cx={px} cy={py} r={pr * 3.5} color={taskColor} opacity={0.04}>
-                <BlurMask blur={pr * 2.2} style="normal" />
+              {/* Planet — glass sphere at midpoint */}
+              {/* Atmosphere */}
+              <Circle cx={px} cy={py} r={pr * 2.8} color={taskColor} opacity={0.06}>
+                <BlurMask blur={pr * 1.8} style="normal" />
               </Circle>
-
-              {/* Mid glow */}
-              <Circle cx={px} cy={py} r={pr * 1.8} color={taskColor} opacity={0.12}>
-                <BlurMask blur={pr * 0.8} style="normal" />
+              {/* Shadow */}
+              <Circle cx={px + pr*0.08} cy={py + pr*0.12} r={pr*1.02} color="rgba(0,0,0,0.6)">
+                <BlurMask blur={pr*0.35} style="normal" />
               </Circle>
-
-              {/* Drop shadow */}
-              <Circle cx={px + pr * 0.1} cy={py + pr * 0.15} r={pr * 1.05} color="rgba(0,0,0,0.55)">
-                <BlurMask blur={pr * 0.4} style="normal" />
-              </Circle>
-
-              {/* Base sphere — near black */}
+              {/* Base */}
               <Circle cx={px} cy={py} r={pr} color="#020108" />
-
-              {/* Internal color volume — deep and subtle */}
-              <Circle cx={px + pr * 0.08} cy={py + pr * 0.08} r={pr * 0.82} color={taskColor} opacity={0.18}>
-                <BlurMask blur={pr * 0.5} style="normal" />
+              {/* Inner color */}
+              <Circle cx={px+pr*0.06} cy={py+pr*0.06} r={pr*0.8} color={taskColor} opacity={0.2}>
+                <BlurMask blur={pr*0.45} style="normal" />
               </Circle>
-
-              {/* Refraction darker zone */}
-              <Circle cx={px + pr * 0.15} cy={py - pr * 0.05} r={pr * 0.58} color="rgba(0,0,0,0.4)">
-                <BlurMask blur={pr * 0.3} style="normal" />
+              {/* Refraction dark */}
+              <Circle cx={px+pr*0.12} cy={py-pr*0.04} r={pr*0.55} color="rgba(0,0,0,0.38)">
+                <BlurMask blur={pr*0.28} style="normal" />
               </Circle>
-
-              {/* Large soft highlight — upper left (main light source) */}
-              <Circle cx={px - pr * 0.25} cy={py - pr * 0.28} r={pr * 0.48} color="rgba(255,255,255,0.18)">
-                <BlurMask blur={pr * 0.22} style="normal" />
+              {/* Main highlight */}
+              <Circle cx={px-pr*0.24} cy={py-pr*0.27} r={pr*0.44} color="rgba(255,255,255,0.2)">
+                <BlurMask blur={pr*0.2} style="normal" />
               </Circle>
-
-              {/* Bright specular core */}
-              <Circle cx={px - pr * 0.28} cy={py - pr * 0.32} r={pr * 0.16} color="rgba(255,255,255,0.65)">
-                <BlurMask blur={pr * 0.07} style="normal" />
+              {/* Specular */}
+              <Circle cx={px-pr*0.27} cy={py-pr*0.3} r={pr*0.14} color="rgba(255,255,255,0.7)">
+                <BlurMask blur={pr*0.06} style="normal" />
               </Circle>
-
-              {/* Right rim light — colored */}
-              <Circle cx={px + pr * 0.55} cy={py + pr * 0.1} r={pr * 0.38} color={taskColor} opacity={0.22}>
-                <BlurMask blur={pr * 0.22} style="normal" />
+              {/* Rim light */}
+              <Circle cx={px+pr*0.52} cy={py+pr*0.08} r={pr*0.35} color={taskColor} opacity={0.25}>
+                <BlurMask blur={pr*0.2} style="normal" />
               </Circle>
-
-              {/* Bottom darkening */}
-              <Circle cx={px} cy={py + pr * 0.42} r={pr * 0.55} color="rgba(0,0,0,0.5)">
-                <BlurMask blur={pr * 0.28} style="normal" />
+              {/* Bottom dark */}
+              <Circle cx={px} cy={py+pr*0.4} r={pr*0.52} color="rgba(0,0,0,0.48)">
+                <BlurMask blur={pr*0.26} style="normal" />
               </Circle>
-
-              {/* Glass rim stroke — very subtle */}
-              <Circle cx={px} cy={py} r={pr - 0.5} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.1)" />
-
-              {/* Outer rim glow */}
-              <Circle cx={px} cy={py} r={pr} style="stroke" strokeWidth={pr * 0.04} color={taskColor} opacity={0.3}>
-                <BlurMask blur={pr * 0.08} style="outer" />
-              </Circle>
+              {/* Rim stroke */}
+              <Circle cx={px} cy={py} r={pr-0.4} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.08)" />
             </Group>
           );
         })}
