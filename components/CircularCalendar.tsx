@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import {
   Canvas, Path, Circle, Skia, BlurMask, Group,
 } from '@shopify/react-native-skia';
@@ -46,19 +46,15 @@ function positionInRange(date: Date, range: ScaleRange): number {
   return Math.max(0, Math.min(1, (date.getTime() - range.start.getTime()) / total));
 }
 
-// Kiromos方式: 外側だけぼかした太いグロー層 + 上に細くシャープな線
 function GlowArc({ path, color }: { path: ReturnType<typeof Skia.Path.Make>; color: string }) {
   return (
     <Group>
-      {/* 外側広いグロー — 完全ぼかし */}
       <Path path={path} style="stroke" strokeWidth={20} color={color} opacity={0.08} strokeCap="round">
         <BlurMask blur={20} style="outer" />
       </Path>
-      {/* 内側タイトグロー */}
       <Path path={path} style="stroke" strokeWidth={6} color={color} opacity={0.2} strokeCap="round">
         <BlurMask blur={6} style="outer" />
       </Path>
-      {/* シャープなコア — ぼかしなし */}
       <Path path={path} style="stroke" strokeWidth={1.5} color={color} opacity={1.0} strokeCap="round" />
     </Group>
   );
@@ -75,6 +71,38 @@ function GlowDot({ x, y, r, color }: { x: number; y: number; r: number; color: s
   );
 }
 
+// タッチ用: タップした角度からスライスindexを計算
+function angleToSlice(x: number, y: number, cx: number, cy: number, n: number): number {
+  const angle = Math.atan2(y - cy, x - cx) + Math.PI / 2;
+  const normalized = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  return Math.floor((normalized / (Math.PI * 2)) * n);
+}
+
+// タップした座標がリング上にあるか
+function isInRing(x: number, y: number, cx: number, cy: number, rOuter: number, rInner: number): boolean {
+  const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+  return dist >= rInner && dist <= rOuter;
+}
+
+// タップした座標に近いタスクを探す
+function findTaskAtPoint(
+  x: number, y: number, cx: number, cy: number,
+  rOuter: number, rInner: number,
+  tasks: Task[], range: ScaleRange
+): Task | null {
+  const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+  if (dist < rInner || dist > rOuter) return null;
+  const angle = Math.atan2(y - cy, x - cx) + Math.PI / 2;
+  const normalized = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const frac = normalized / (Math.PI * 2);
+  for (const task of tasks) {
+    const s = positionInRange(new Date(task.start_at), range);
+    const e = positionInRange(new Date(task.end_at), range);
+    if (frac >= s && frac <= e) return task;
+  }
+  return null;
+}
+
 export function CircularCalendar({
   size, range, tasks, selectedSlice, onSlicePress, onTaskPress,
 }: Props) {
@@ -82,6 +110,8 @@ export function CircularCalendar({
   const rGold = size * 0.415;
   const rBlue = size * 0.345;
   const rCenter = size * 0.185;
+  const rTouchOuter = rGold + 24;
+  const rTouchInner = rCenter + 4;
 
   const nowFrac = useMemo(() => {
     const now = new Date();
@@ -91,9 +121,7 @@ export function CircularCalendar({
   }, [range]);
 
   const goldPath = useMemo(() =>
-    nowFrac != null && nowFrac > 0.002
-      ? makeArcPath(cx, cy, rGold, 0, nowFrac)
-      : null,
+    nowFrac != null && nowFrac > 0.002 ? makeArcPath(cx, cy, rGold, 0, nowFrac) : null,
     [cx, cy, rGold, nowFrac]);
 
   const bluePath = useMemo(() => {
@@ -108,13 +136,18 @@ export function CircularCalendar({
     const p = Skia.Path.Make();
     for (let i = 0; i < N; i++) {
       const a = fracToRad(i / N);
-      const r1 = rGold + 5;
-      const r2 = rGold + (i % 6 === 0 ? 18 : 10);
+      const r1 = rGold + 5, r2 = rGold + (i % 6 === 0 ? 18 : 10);
       p.moveTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a));
       p.lineTo(cx + r2 * Math.cos(a), cy + r2 * Math.sin(a));
     }
     return p;
   }, [cx, cy, rGold]);
+
+  // Selected slice highlight path
+  const selectedPath = useMemo(() => {
+    if (selectedSlice == null) return null;
+    return makeArcPath(cx, cy, (rGold + rBlue) / 2, selectedSlice / N, (selectedSlice + 1) / N);
+  }, [cx, cy, rGold, rBlue, selectedSlice]);
 
   const taskPaths = useMemo(() => tasks.map(task => {
     const s = new Date(task.start_at), e = new Date(task.end_at);
@@ -134,15 +167,30 @@ export function CircularCalendar({
     return { hr, x: cx + lr * Math.cos(a), y: cy + lr * Math.sin(a), big: hr % 6 === 0 };
   }), [cx, cy, rGold]);
 
+  const handleTouch = (x: number, y: number) => {
+    // Check if tapped on a task first
+    const task = findTaskAtPoint(x, y, cx, cy, rGold + 20, rBlue - 20, tasks, range);
+    if (task) { onTaskPress(task); return; }
+    // Otherwise register as slice tap
+    if (isInRing(x, y, cx, cy, rTouchOuter, rTouchInner)) {
+      const slice = angleToSlice(x, y, cx, cy, N);
+      onSlicePress(slice);
+    }
+  };
+
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
-      <Canvas style={StyleSheet.absoluteFill}>
+      {/* Skia canvas — pointer events none so touches pass through */}
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
 
-        {/* Base guide circles — very dim */}
         <Path path={baseGold} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.05)" />
         <Path path={baseBlue} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.04)" />
 
-        {/* Task arcs */}
+        {/* Selected slice highlight */}
+        {selectedPath && (
+          <Path path={selectedPath} style="stroke" strokeWidth={rGold - rBlue} color="rgba(255,255,255,0.07)" />
+        )}
+
         {taskPaths.map((t, i) => (
           <Group key={i}>
             <Path path={t.path} style="stroke" strokeWidth={4} color="rgba(255,255,255,0.06)" strokeCap="round">
@@ -152,78 +200,57 @@ export function CircularCalendar({
           </Group>
         ))}
 
-        {/* Gold arc */}
         {goldPath && <GlowArc path={goldPath} color="#E8C56A" />}
-
-        {/* Blue arc */}
         {bluePath && <GlowArc path={bluePath} color="#5A9BE8" />}
 
-        {/* Ticks */}
         <Path path={tickPath} style="stroke" strokeWidth={0.7} color="rgba(255,255,255,0.22)" />
 
-        {/* Now dots */}
         {nowGold && <GlowDot x={nowGold.x} y={nowGold.y} r={3.5} color="#E8C56A" />}
         {nowBlue && <GlowDot x={nowBlue.x} y={nowBlue.y} r={3} color="#5A9BE8" />}
 
-        {/* ── Center glass sphere ── */}
-
-        {/* 1. Outer glow — sphere rim light (like the red/dark rim in reference) */}
-        <Circle cx={cx} cy={cy} r={rCenter * 1.02} color="rgba(80,30,20,0.0)">
-          <BlurMask blur={rCenter * 0.12} style="outer" />
-        </Circle>
+        {/* Glass sphere */}
         <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={rCenter * 0.06} color="rgba(120,50,30,0.35)">
           <BlurMask blur={rCenter * 0.08} style="outer" />
         </Circle>
-
-        {/* 2. Base sphere — pure black */}
         <Circle cx={cx} cy={cy} r={rCenter} color="#000000" />
-
-        {/* 3. Internal volume — very subtle dark fill, not opaque */}
         <Circle cx={cx} cy={cy} r={rCenter * 0.95} color="rgba(8,5,20,0.85)" />
-
-        {/* 4. Large soft upper highlight (like reference — white cloud upper-left) */}
         <Circle cx={cx - rCenter * 0.15} cy={cy - rCenter * 0.25} r={rCenter * 0.55} color="rgba(200,200,255,0.07)">
           <BlurMask blur={rCenter * 0.5} style="normal" />
         </Circle>
         <Circle cx={cx - rCenter * 0.2} cy={cy - rCenter * 0.3} r={rCenter * 0.3} color="rgba(255,255,255,0.12)">
           <BlurMask blur={rCenter * 0.25} style="normal" />
         </Circle>
-        {/* Bright spot core */}
         <Circle cx={cx - rCenter * 0.22} cy={cy - rCenter * 0.33} r={rCenter * 0.1} color="rgba(255,255,255,0.35)">
           <BlurMask blur={rCenter * 0.08} style="normal" />
         </Circle>
-
-        {/* 5. Lower dark area — reference shows bottom is very dark */}
         <Circle cx={cx + rCenter * 0.05} cy={cy + rCenter * 0.35} r={rCenter * 0.6} color="rgba(0,0,0,0.5)">
           <BlurMask blur={rCenter * 0.3} style="normal" />
         </Circle>
-
-        {/* 6. Right-side transmission glow (reference has subtle right-side light) */}
         <Circle cx={cx + rCenter * 0.45} cy={cy + rCenter * 0.1} r={rCenter * 0.4} color="rgba(60,40,100,0.18)">
           <BlurMask blur={rCenter * 0.25} style="normal" />
         </Circle>
-
-        {/* 7. NO outline stroke — just a very subtle outer rim via blurred stroke */}
         <Circle cx={cx} cy={cy} r={rCenter - 1} style="stroke" strokeWidth={1} color="rgba(255,255,255,0.06)" />
 
       </Canvas>
 
+      {/* Transparent touch layer */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={(e) => {
+          const { locationX, locationY } = e.nativeEvent;
+          handleTouch(locationX, locationY);
+        }}
+      />
+
       {/* Hour labels */}
       {hourLabels.map((l) => (
-        <Text
-          key={l.hr}
-          style={[
-            styles.hour,
-            { left: l.x - 14, top: l.y - 9 },
-            l.big ? styles.hourBig : styles.hourSm,
-          ]}
-        >
+        <Text key={l.hr} style={[styles.hour, { left: l.x - 14, top: l.y - 9 }, l.big ? styles.hourBig : styles.hourSm]}>
           {l.hr}
         </Text>
       ))}
 
       {/* Center label */}
-      <View style={[styles.centerWrap, { top: cy - 24, width: size }]}>
+      <View style={[styles.centerWrap, { top: cy - 24, width: size }]} pointerEvents="none">
         <Text style={styles.centerTitle}>{range.label}</Text>
         <Text style={styles.centerSub}>{range.subLabel}</Text>
       </View>
