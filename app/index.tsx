@@ -39,9 +39,12 @@ function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown
     <View
       style={{flex:1}}
       onStartShouldSetResponder={()=>true}
-      onMoveShouldSetResponder={(e,g)=>Math.abs(g.dx)>8||Math.abs(g.dy)>8}
+      onStartShouldSetResponderCapture={()=>false}
       onResponderGrant={(e)=>{
         start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      }}
+      onResponderMove={(e)=>{
+        // just track, don't block
       }}
       onResponderRelease={(e)=>{
         if(!start.current) return;
@@ -49,10 +52,11 @@ function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown
         const dy = e.nativeEvent.pageY - start.current.y;
         start.current = null;
         const adx=Math.abs(dx), ady=Math.abs(dy);
-        if(adx<15&&ady<15) return;
+        if(adx<12&&ady<12) return;
         if(adx>ady) { if(dx<0) onSwipeLeft(); else onSwipeRight(); }
         else { if(dy<0) onSwipeUp(); else onSwipeDown(); }
       }}
+      onResponderTerminationRequest={()=>false}
     >
       {children}
     </View>
