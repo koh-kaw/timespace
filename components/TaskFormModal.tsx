@@ -26,10 +26,15 @@ type Props = {
     notes: string | null;
     notification_minutes_before: number | null;
     recurrence_rule: string | null;
+    start_at: Date;
+    end_at: Date;
   }) => void;
   onDelete?: () => void;
   onDrillIn?: () => void;
 };
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
 const NOTIFICATION_OPTIONS = [
   { label: '通知なし', value: null },
@@ -67,14 +72,41 @@ export function TaskFormModal({
   const [notif, setNotif] = useState<number | null>(initialNotificationMinutesBefore);
   const [recur, setRecur] = useState<string | null>(initialRecurrence);
 
+  const [startH, setStartH] = useState(startAt.getHours());
+  const [startM, setStartM] = useState(roundToStep(startAt.getMinutes(), 5));
+  const [endH, setEndH] = useState(endAt.getHours());
+  const [endM, setEndM] = useState(roundToStep(endAt.getMinutes(), 5));
+
   useEffect(() => {
     if (visible) {
       setTitle(initialTitle);
       setNotes(initialNotes);
       setNotif(initialNotificationMinutesBefore);
       setRecur(initialRecurrence);
+      setStartH(startAt.getHours());
+      setStartM(roundToStep(startAt.getMinutes(), 5));
+      setEndH(endAt.getHours());
+      setEndM(roundToStep(endAt.getMinutes(), 5));
     }
-  }, [visible, initialTitle, initialNotes, initialNotificationMinutesBefore, initialRecurrence]);
+  }, [visible, initialTitle, initialNotes, initialNotificationMinutesBefore, initialRecurrence, startAt, endAt]);
+
+  const buildStart = () => {
+    const d = new Date(startAt);
+    d.setHours(startH, startM, 0, 0);
+    return d;
+  };
+  const buildEnd = () => {
+    const d = new Date(endAt);
+    d.setHours(endH, endM, 0, 0);
+    return d;
+  };
+
+  const totalMin = (endH * 60 + endM) - (startH * 60 + startM);
+  const durationLabel = totalMin > 0
+    ? totalMin >= 60
+      ? `${Math.floor(totalMin / 60)}時間${totalMin % 60 ? (totalMin % 60) + '分' : ''}`
+      : `${totalMin}分`
+    : totalMin === 0 ? '0分' : '⚠ 終了 ≤ 開始';
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -85,8 +117,10 @@ export function TaskFormModal({
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+
+            {/* Header */}
             <View style={styles.headerRow}>
-              <Text style={styles.timeRange}>{formatRange(startAt, endAt)}</Text>
+              <Text style={styles.dateLabel}>{formatDate(startAt)}</Text>
               {isEditing && onDrillIn && (
                 <Pressable onPress={onDrillIn} style={styles.drillBtn}>
                   <Text style={styles.drillBtnText}>奥行きへ ↓</Text>
@@ -94,6 +128,67 @@ export function TaskFormModal({
               )}
             </View>
 
+            {/* Time picker */}
+            <View style={styles.timePickerRow}>
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeBlockLabel}>開始</Text>
+                <View style={styles.timeSelectors}>
+                  <TimeScroller
+                    values={HOURS}
+                    selected={startH}
+                    onSelect={(v) => {
+                      setStartH(v);
+                      if (v * 60 + startM >= endH * 60 + endM) {
+                        setEndH(v);
+                        setEndM(startM + 30 <= 55 ? startM + 30 : 55);
+                      }
+                    }}
+                    format={(v) => String(v).padStart(2, '0')}
+                    unit="時"
+                  />
+                  <Text style={styles.timeSep}>:</Text>
+                  <TimeScroller
+                    values={MINUTES}
+                    selected={startM}
+                    onSelect={(v) => {
+                      setStartM(v);
+                      if (startH * 60 + v >= endH * 60 + endM) {
+                        setEndM(v + 30 <= 55 ? v + 30 : 55);
+                      }
+                    }}
+                    format={(v) => String(v).padStart(2, '0')}
+                    unit="分"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>{durationLabel}</Text>
+              </View>
+
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeBlockLabel}>終了</Text>
+                <View style={styles.timeSelectors}>
+                  <TimeScroller
+                    values={HOURS}
+                    selected={endH}
+                    onSelect={setEndH}
+                    format={(v) => String(v).padStart(2, '0')}
+                    unit="時"
+                  />
+                  <Text style={styles.timeSep}>:</Text>
+                  <TimeScroller
+                    values={MINUTES}
+                    selected={endM}
+                    onSelect={setEndM}
+                    format={(v) => String(v).padStart(2, '0')}
+                    unit="分"
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Title */}
             <Text style={styles.label}>件名</Text>
             <TextInput
               value={title}
@@ -103,6 +198,7 @@ export function TaskFormModal({
               autoFocus={!isEditing}
             />
 
+            {/* Notes */}
             <Text style={styles.label}>メモ</Text>
             <TextInput
               value={notes}
@@ -113,6 +209,7 @@ export function TaskFormModal({
               style={[styles.input, styles.textarea]}
             />
 
+            {/* Notification */}
             <Text style={styles.label}>通知</Text>
             <View style={styles.chips}>
               {NOTIFICATION_OPTIONS.map((opt) => (
@@ -128,6 +225,7 @@ export function TaskFormModal({
               ))}
             </View>
 
+            {/* Recurrence */}
             <Text style={styles.label}>繰り返し</Text>
             <View style={styles.chips}>
               {RECURRENCE_OPTIONS.map((opt) => (
@@ -143,6 +241,7 @@ export function TaskFormModal({
               ))}
             </View>
 
+            {/* Actions */}
             <View style={styles.actions}>
               {onDelete && (
                 <Pressable onPress={onDelete} style={[styles.btn, styles.btnDanger]}>
@@ -155,14 +254,17 @@ export function TaskFormModal({
               <Pressable
                 onPress={() => {
                   if (!title.trim()) return;
+                  if (totalMin <= 0) return;
                   onSubmit({
                     title: title.trim(),
                     notes: notes.trim() || null,
                     notification_minutes_before: notif,
                     recurrence_rule: recur,
+                    start_at: buildStart(),
+                    end_at: buildEnd(),
                   });
                 }}
-                style={[styles.btn, styles.btnPrimary]}
+                style={[styles.btn, styles.btnPrimary, totalMin <= 0 && { opacity: 0.4 }]}
               >
                 <Text style={styles.btnPrimaryText}>保存</Text>
               </Pressable>
@@ -174,11 +276,55 @@ export function TaskFormModal({
   );
 }
 
-function formatRange(start: Date, end: Date): string {
-  const f = (d: Date) =>
-    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return `${start.getMonth() + 1}/${start.getDate()} ${f(start)} - ${f(end)}`;
+// ─── TimeScroller ────────────────────────────────────────────────────────────
+
+function TimeScroller({
+  values,
+  selected,
+  onSelect,
+  format,
+  unit,
+}: {
+  values: number[];
+  selected: number;
+  onSelect: (v: number) => void;
+  format: (v: number) => string;
+  unit: string;
+}) {
+  return (
+    <ScrollView
+      style={styles.scroller}
+      contentContainerStyle={styles.scrollerContent}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      {values.map((v) => (
+        <Pressable
+          key={v}
+          onPress={() => onSelect(v)}
+          style={[styles.scrollerItem, v === selected && styles.scrollerItemSelected]}
+        >
+          <Text style={[styles.scrollerText, v === selected && styles.scrollerTextSelected]}>
+            {format(v)}
+            <Text style={styles.scrollerUnit}>{unit}</Text>
+          </Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function roundToStep(min: number, step: number): number {
+  return Math.round(min / step) * step % 60;
+}
+
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
@@ -193,49 +339,66 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#D3D1C7',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 4,
+    width: 36, height: 4, backgroundColor: '#D3D1C7',
+    borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
   body: { padding: 20, paddingBottom: 48 },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 16,
   },
-  timeRange: { fontSize: 13, color: '#888780' },
+  dateLabel: { fontSize: 14, color: '#888780', fontWeight: '500' },
   drillBtn: {
-    backgroundColor: '#7F77DD',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    backgroundColor: '#7F77DD', paddingHorizontal: 12,
+    paddingVertical: 6, borderRadius: 14,
   },
   drillBtnText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
-  label: { fontSize: 12, color: '#888780', marginTop: 14, marginBottom: 6, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  // Time picker
+  timePickerRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 20,
+    backgroundColor: '#F7F6F2', borderRadius: 16, padding: 12,
+  },
+  timeBlock: { alignItems: 'center', flex: 1 },
+  timeBlockLabel: { fontSize: 11, color: '#888780', fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  timeSelectors: { flexDirection: 'row', alignItems: 'center' },
+  timeSep: { fontSize: 18, fontWeight: '700', color: '#2C2C2A', marginHorizontal: 2 },
+  durationBadge: {
+    backgroundColor: '#EEEDFE', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 6,
+    alignItems: 'center', marginHorizontal: 4,
+  },
+  durationText: { fontSize: 12, color: '#534AB7', fontWeight: '700', textAlign: 'center' },
+
+  // Scroller
+  scroller: { height: 120, width: 48 },
+  scrollerContent: { alignItems: 'center', paddingVertical: 4 },
+  scrollerItem: {
+    paddingVertical: 6, paddingHorizontal: 4,
+    borderRadius: 8, marginVertical: 1, minWidth: 44, alignItems: 'center',
+  },
+  scrollerItemSelected: { backgroundColor: '#7F77DD' },
+  scrollerText: { fontSize: 15, color: '#5F5E5A', fontWeight: '400' },
+  scrollerTextSelected: { color: '#FFF', fontWeight: '700' },
+  scrollerUnit: { fontSize: 10, color: 'inherit' },
+
+  label: {
+    fontSize: 12, color: '#888780', fontWeight: '600',
+    marginTop: 14, marginBottom: 6,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
   input: {
-    borderWidth: 1,
-    borderColor: '#E8E6DF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 15,
-    backgroundColor: '#FAFAF8',
-    color: '#2C2C2A',
+    borderWidth: 1, borderColor: '#E8E6DF', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 15, backgroundColor: '#FAFAF8', color: '#2C2C2A',
   },
   textarea: { minHeight: 76, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8E6DF',
-    backgroundColor: '#FAFAF8',
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E8E6DF', backgroundColor: '#FAFAF8',
   },
   chipSelected: { backgroundColor: '#EEEDFE', borderColor: '#7F77DD' },
   chipText: { fontSize: 13, color: '#5F5E5A' },

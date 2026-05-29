@@ -108,19 +108,31 @@ export default function Home() {
     notes: string | null;
     notification_minutes_before: number | null;
     recurrence_rule: string | null;
+    start_at: Date;
+    end_at: Date;
   }) => {
     if (!userId) return;
     try {
       if (editingTask) {
-        await updateTask(editingTask.id, payload);
-      } else if (sliceTime) {
+        await updateTask(editingTask.id, {
+          title: payload.title,
+          notes: payload.notes,
+          notification_minutes_before: payload.notification_minutes_before,
+          recurrence_rule: payload.recurrence_rule,
+          start_at: payload.start_at,
+          end_at: payload.end_at,
+        });
+      } else {
         const parentId = drillStack.length
           ? drillStack[drillStack.length - 1].id
           : null;
         await createTask(userId, {
-          ...payload,
-          start_at: sliceTime.start,
-          end_at: sliceTime.end,
+          title: payload.title,
+          notes: payload.notes,
+          notification_minutes_before: payload.notification_minutes_before,
+          recurrence_rule: payload.recurrence_rule,
+          start_at: payload.start_at,
+          end_at: payload.end_at,
           parent_id: parentId,
         });
       }
