@@ -19,14 +19,14 @@ function sameDay(a: Date, b: Date) {
 export default function CalendarPage() {
   const userId = useSessionStore(s => s.userId);
   const { setAnchor, setScale } = useViewStore();
-  const [anchor, setAnchor] = useState(new Date());
+  const [viewMonth, setViewMonth] = useState(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selected, setSelected] = useState<Date>(new Date());
   const router = useRouter();
   const lastTap = useRef<{date: string, time: number}>({ date: '', time: 0 });
 
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
   const today = new Date();
 
   const load = useCallback(async () => {
@@ -72,11 +72,11 @@ export default function CalendarPage() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => { const d = new Date(anchor); d.setMonth(d.getMonth()-1); setAnchor(d); }} style={styles.navBtn}>
+          <Pressable onPress={() => { const d = new Date(viewMonth); d.setMonth(d.getMonth()-1); setViewMonth(d); }} style={styles.navBtn}>
             <Text style={styles.navBtnText}>‹</Text>
           </Pressable>
           <Text style={styles.monthLabel}>{year}年 {MONTHS[month]}</Text>
-          <Pressable onPress={() => { const d = new Date(anchor); d.setMonth(d.getMonth()+1); setAnchor(d); }} style={styles.navBtn}>
+          <Pressable onPress={() => { const d = new Date(viewMonth); d.setMonth(d.getMonth()+1); setViewMonth(d); }} style={styles.navBtn}>
             <Text style={styles.navBtnText}>›</Text>
           </Pressable>
         </View>
