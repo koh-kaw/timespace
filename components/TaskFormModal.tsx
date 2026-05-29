@@ -219,18 +219,25 @@ function TimeScroller({ values, selected, onSelect, format, unit }: {
   values: number[]; selected: number; onSelect: (v: number) => void;
   format: (v: number) => string; unit: string;
 }) {
+  const idx = values.indexOf(selected);
+  const prev = idx > 0 ? values[idx - 1] : null;
+  const next = idx < values.length - 1 ? values[idx + 1] : null;
   return (
-    <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollerContent}
-      showsVerticalScrollIndicator={false} nestedScrollEnabled>
-      {values.map(v => (
-        <Pressable key={v} onPress={() => onSelect(v)}
-          style={[styles.scrollerItem, v === selected && styles.scrollerItemSel]}>
-          <Text style={[styles.scrollerText, v === selected && styles.scrollerTextSel]}>
-            {format(v)}<Text style={{ fontSize: 9 }}>{unit}</Text>
-          </Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+    <View style={styles.scroller}>
+      <Pressable onPress={() => prev !== null && onSelect(prev)} style={styles.scrollBtn}>
+        <Text style={styles.scrollArrow}>{prev !== null ? '▲' : ''}</Text>
+        <Text style={styles.scrollSide}>{prev !== null ? format(prev) : ''}</Text>
+      </Pressable>
+      <View style={styles.scrollerItemSel}>
+        <Text style={styles.scrollerTextSel}>
+          {format(selected)}<Text style={{ fontSize: 9, fontWeight: '300' }}>{unit}</Text>
+        </Text>
+      </View>
+      <Pressable onPress={() => next !== null && onSelect(next)} style={styles.scrollBtn}>
+        <Text style={styles.scrollSide}>{next !== null ? format(next) : ''}</Text>
+        <Text style={styles.scrollArrow}>{next !== null ? '▼' : ''}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -276,13 +283,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 6, borderWidth: 0.5, borderColor: 'rgba(232,197,106,0.3)' },
   durationText: { fontSize: 12, color: S.gold, fontWeight: '600' },
 
-  scroller: { height: 120, width: 48 },
+  scroller: { height: 110, width: 52, alignItems: 'center', justifyContent: 'space-between' },
+  scrollBtn: { alignItems: 'center', paddingVertical: 2, minHeight: 28, justifyContent: 'center' },
+  scrollArrow: { fontSize: 10, color: 'rgba(255,255,255,0.25)', lineHeight: 12 },
+  scrollSide: { fontSize: 12, color: 'rgba(255,255,255,0.2)', fontWeight: '200' },
   scrollerContent: { alignItems: 'center', paddingVertical: 4 },
   scrollerItem: { paddingVertical: 6, paddingHorizontal: 4, borderRadius: 8,
     marginVertical: 1, minWidth: 44, alignItems: 'center' },
-  scrollerItemSel: { backgroundColor: 'rgba(232,197,106,0.2)' },
+  scrollerItemSel: { backgroundColor: 'rgba(232,197,106,0.18)', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 6, alignItems: 'center', minWidth: 52 },
   scrollerText: { fontSize: 15, color: 'rgba(255,255,255,0.4)', fontWeight: '300' },
-  scrollerTextSel: { color: S.gold, fontWeight: '600' },
+  scrollerTextSel: { color: S.gold, fontWeight: '600', fontSize: 18 },
 
   label: { fontSize: 10, color: S.textDim, fontWeight: '500', marginTop: 16,
     marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },

@@ -69,19 +69,17 @@ export default function Home() {
         }
       } else {
         // vertical swipe
-        if (dy < -40) {
-          // swipe up → zoom in
-          if (drillStack.length === 0) {
-            const next = zoomIn(scaleKind);
-            if (next) setScale(next);
-          }
-        } else if (dy > 40) {
-          // swipe down
+        if (dy > 40) {
+          // swipe down → zoom out or pop drill
           if (drillStack.length > 0) {
-            // in drill: go back up
             popDrill();
-          } else if (scaleKind === 'day' && tasksRef.current.length > 0) {
-            // day view: drill into nearest task to now
+          } else {
+            const prev = zoomOut(scaleKind);
+            if (prev) setScale(prev);
+          }
+        } else if (dy < -40) {
+          // swipe up → drill down to nearest task, or zoom in
+          if (drillStack.length === 0 && scaleKind === 'day' && tasksRef.current.length > 0) {
             const nowMs = Date.now();
             const nearest = tasksRef.current.reduce((best, t) => {
               const mid = (new Date(t.start_at).getTime() + new Date(t.end_at).getTime()) / 2;
@@ -89,9 +87,9 @@ export default function Home() {
               return Math.abs(mid - nowMs) < Math.abs(bestMid - nowMs) ? t : best;
             });
             pushDrill(nearest);
-          } else {
-            const prev = zoomOut(scaleKind);
-            if (prev) setScale(prev);
+          } else if (drillStack.length === 0) {
+            const next = zoomIn(scaleKind);
+            if (next) setScale(next);
           }
         }
       }
