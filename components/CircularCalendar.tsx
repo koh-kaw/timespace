@@ -165,21 +165,51 @@ export function CircularCalendar({
         {nowGold && <GlowDot x={nowGold.x} y={nowGold.y} r={3.5} color="#E8C56A" />}
         {nowBlue && <GlowDot x={nowBlue.x} y={nowBlue.y} r={3} color="#5A9BE8" />}
 
-        {/* Center disk shadow */}
-        <Circle cx={cx} cy={cy + 4} r={rCenter + 3} color="rgba(0,0,0,0.6)">
-          <BlurMask blur={16} style="normal" />
+        {/* ── Center glass sphere ── */}
+        {/* Drop shadow */}
+        <Circle cx={cx} cy={cy + rCenter * 0.15} r={rCenter * 1.05} color="rgba(0,0,0,0.7)">
+          <BlurMask blur={rCenter * 0.35} style="normal" />
         </Circle>
 
-        {/* Center disk — 黒に近い暗さ */}
-        <Circle cx={cx} cy={cy} r={rCenter} color="#050412" />
+        {/* Base sphere — deep black */}
+        <Circle cx={cx} cy={cy} r={rCenter} color="#02010a" />
 
-        {/* Center rim */}
-        <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.18)" />
+        {/* Dark outer rim (inner shadow) */}
+        <Circle cx={cx} cy={cy} r={rCenter * 0.97} style="stroke" strokeWidth={rCenter * 0.08} color="rgba(0,0,0,0.8)" />
 
-        {/* Center shimmer — 極めて薄く */}
-        <Circle cx={cx - rCenter * 0.2} cy={cy - rCenter * 0.28} r={rCenter * 0.38} color="rgba(255,255,255,0.05)">
-          <BlurMask blur={10} style="normal" />
+        {/* Glass transmission — slightly lighter center */}
+        <Circle cx={cx + rCenter * 0.05} cy={cy + rCenter * 0.05} r={rCenter * 0.75} color="rgba(15,12,35,0.6)">
+          <BlurMask blur={rCenter * 0.4} style="normal" />
         </Circle>
+
+        {/* Refraction band — diagonal dark */}
+        <Circle cx={cx + rCenter * 0.15} cy={cy - rCenter * 0.1} r={rCenter * 0.55} color="rgba(0,0,0,0.35)">
+          <BlurMask blur={rCenter * 0.25} style="normal" />
+        </Circle>
+
+        {/* Main highlight — upper left bright spot (light source) */}
+        <Circle cx={cx - rCenter * 0.28} cy={cy - rCenter * 0.32} r={rCenter * 0.28} color="rgba(255,255,255,0.22)">
+          <BlurMask blur={rCenter * 0.18} style="normal" />
+        </Circle>
+        {/* Inner bright core */}
+        <Circle cx={cx - rCenter * 0.3} cy={cy - rCenter * 0.35} r={rCenter * 0.1} color="rgba(255,255,255,0.55)">
+          <BlurMask blur={rCenter * 0.06} style="normal" />
+        </Circle>
+
+        {/* Edge rim light — right side */}
+        <Circle cx={cx + rCenter * 0.6} cy={cy + rCenter * 0.2} r={rCenter * 0.38} color="rgba(80,60,160,0.25)">
+          <BlurMask blur={rCenter * 0.2} style="normal" />
+        </Circle>
+
+        {/* Bottom reflection — floor bounce */}
+        <Circle cx={cx - rCenter * 0.1} cy={cy + rCenter * 0.5} r={rCenter * 0.35} color="rgba(30,20,80,0.3)">
+          <BlurMask blur={rCenter * 0.22} style="normal" />
+        </Circle>
+
+        {/* Outer glass rim — barely visible */}
+        <Circle cx={cx} cy={cy} r={rCenter} style="stroke" strokeWidth={0.8} color="rgba(255,255,255,0.15)" />
+        {/* Top-left rim highlight */}
+        <Circle cx={cx} cy={cy} r={rCenter - 0.4} style="stroke" strokeWidth={0.6} color="rgba(255,255,255,0.08)" />
 
       </Canvas>
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,37 +10,33 @@ function seededRandom(seed: number) {
 }
 
 export function SpaceBackground() {
-  const stars = useMemo(() => Array.from({ length: 160 }, (_, i) => ({
-    x: seededRandom(i * 3) * width,
-    y: seededRandom(i * 3 + 1) * height,
-    r: seededRandom(i * 3 + 2) * 1.2 + 0.2,
-    opacity: seededRandom(i * 7) * 0.6 + 0.15,
-  })), []);
+  const stars = useMemo(() => Array.from({ length: 280 }, (_, i) => {
+    const r = seededRandom(i * 3 + 2) * 1.1 + 0.15;
+    const big = seededRandom(i * 11) < 0.06;
+    return {
+      x: seededRandom(i * 3) * width,
+      y: seededRandom(i * 3 + 1) * height,
+      r: big ? r * 1.8 : r,
+      opacity: big
+        ? seededRandom(i * 7) * 0.4 + 0.5
+        : seededRandom(i * 7) * 0.35 + 0.1,
+    };
+  }), []);
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
       <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
+        {/* Pure black base */}
+        <Rect x={0} y={0} width={width} height={height} fill="#000000" />
+
+        {/* Very subtle blue-black gradient at top */}
         <Defs>
-          <RadialGradient id="bg" cx="50%" cy="35%" r="75%">
-            <Stop offset="0%" stopColor="#0a0820" />
-            <Stop offset="55%" stopColor="#060412" />
-            <Stop offset="100%" stopColor="#000008" />
-          </RadialGradient>
-          <RadialGradient id="neb1" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#2a1a6e" stopOpacity={0.22} />
-            <Stop offset="100%" stopColor="#000000" stopOpacity={0} />
-          </RadialGradient>
-          <RadialGradient id="neb2" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#0e2a5e" stopOpacity={0.18} />
+          <RadialGradient id="vignette" cx="50%" cy="40%" r="65%">
+            <Stop offset="0%" stopColor="#0a0820" stopOpacity={0.5} />
             <Stop offset="100%" stopColor="#000000" stopOpacity={0} />
           </RadialGradient>
         </Defs>
-
-        <Rect x={0} y={0} width={width} height={height} fill="url(#bg)" />
-
-        {/* Nebulae */}
-        <Circle cx={width * 0.2} cy={height * 0.18} r={200} fill="url(#neb1)" />
-        <Circle cx={width * 0.85} cy={height * 0.45} r={160} fill="url(#neb2)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#vignette)" />
 
         {/* Stars */}
         {stars.map((s, i) => (

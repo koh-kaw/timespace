@@ -46,7 +46,7 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080714' },
+  container: { flex: 1, backgroundColor: '#000000' },
   inner: { flex: 1 },
   section: { padding: 20, marginTop: 8 },
   sectionLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600',

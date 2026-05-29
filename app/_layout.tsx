@@ -23,11 +23,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#080714' },
+            headerStyle: { backgroundColor: '#000000' },
             headerShadowVisible: false,
             headerTitleStyle: { fontWeight: '500', color: '#FFFFFF' },
             headerTintColor: '#8B7FFF',
-            contentStyle: { backgroundColor: '#080714' },
+            contentStyle: { backgroundColor: '#000000' },
           }}
         >
           <Stack.Screen name="index" options={{ title: 'Timespace', headerShown: false }} />

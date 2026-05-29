@@ -72,7 +72,7 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080714' },
+  container: { flex: 1, backgroundColor: '#000000' },
   inner: { flex: 1 },
   body: { flex: 1, paddingHorizontal: 32, justifyContent: 'center' },
   logoArea: { alignItems: 'center', marginBottom: 56 },

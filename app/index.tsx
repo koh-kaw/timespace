@@ -155,7 +155,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000008' },
+  root: { flex: 1, backgroundColor: '#000000' },
   inner: { flex: 1 },
 
   zbar: {
