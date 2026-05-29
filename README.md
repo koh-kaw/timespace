@@ -89,3 +89,15 @@ docs/
 - [ ] ゴール → タスク自動分解の提案
 - [ ] ジェスチャでのズーム（ピンチイン/アウト）
 - [ ] ダークモード
+
+## Web プレビュー (3D Glass Calendar)
+
+```bash
+cd web
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+React Three Fiber + `@react-three/drei` の `MeshTransmissionMaterial` で  
+リキッドガラスの円形カレンダーを実装。
