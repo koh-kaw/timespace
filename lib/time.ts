@@ -149,3 +149,57 @@ export function sliceToTimeRange(
     end: new Date(range.start.getTime() + (index + 1) * sliceMs),
   };
 }
+
+
+// ─── Drill-down range from a task ────────────────────────────────────────────
+
+/**
+ * Given a parent task's duration, pick the most natural slice unit.
+ * Returns a ScaleRange covering the task's time window, divided into
+ * human-readable increments.
+ *
+ * Examples:
+ *   30 min  → 5 min × 6
+ *   1 hour  → 5 min × 12
+ *   2 hours → 15 min × 8
+ *   3 hours → 30 min × 6
+ *   6 hours → 1 hour × 6
+ *   12 hours→ 1 hour × 12
+ *   24 hours→ 1 hour × 24
+ *   48 hours→ 2 hours × 24
+ */
+export function drillRangeFromTask(
+  start: Date,
+  end: Date,
+  parentTitle: string,
+): ScaleRange {
+  const totalMs = end.getTime() - start.getTime();
+  const totalMin = totalMs / 60_000;
+
+  // Pick slice unit (in minutes) that gives 6–24 divisions
+  const candidates = [1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 720];
+  let sliceMin = 5;
+  for (const c of candidates) {
+    const divisions = Math.round(totalMin / c);
+    if (divisions >= 4 && divisions <= 24) {
+      sliceMin = c;
+      break;
+    }
+  }
+
+  const divisions = Math.max(2, Math.round(totalMin / sliceMin));
+
+  const labelForUnit = (min: number) => {
+    if (min < 60) return `${min}分`;
+    return `${min / 60}時間`;
+  };
+
+  return {
+    kind: 'day', // reuse 'day' kind so existing circle logic works
+    start,
+    end,
+    divisions,
+    label: parentTitle,
+    subLabel: `${labelForUnit(sliceMin)}単位`,
+  };
+}

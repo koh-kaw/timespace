@@ -214,7 +214,7 @@ function DecomposeModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          max_tokens: 4096,
           system: `あなたは目標達成の専門家です。
 ユーザーの目標を受け取り、それを階層的に分解してください。
 必ずJSON形式のみで返してください。前置きや説明は不要です。
@@ -239,8 +239,14 @@ function DecomposeModal({
       });
       const data = await res.json();
       const text = data.content?.[0]?.text ?? '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed: DecomposeResult = JSON.parse(clean);
+      if (!text) throw new Error('APIからの応答が空です');
+      // Extract JSON - find the first { ... } block
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSONが見つかりません: ' + text.slice(0, 200));
+      const parsed: DecomposeResult = JSON.parse(jsonMatch[0]);
+      if (!parsed.subgoals || !Array.isArray(parsed.subgoals)) {
+        throw new Error('不正なレスポンス形式');
+      }
       setResult(parsed);
     } catch (e: any) {
       setError('分解に失敗しました: ' + (e?.message || String(e)));

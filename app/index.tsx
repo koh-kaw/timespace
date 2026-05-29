@@ -17,6 +17,7 @@ import {
   sliceToTimeRange,
   zoomIn,
   zoomOut,
+  drillRangeFromTask,
   type ScaleRange,
 } from '../lib/time';
 import { useSessionStore, useViewStore } from '../lib/store';
@@ -44,14 +45,11 @@ export default function Home() {
   const range: ScaleRange = useMemo(() => {
     if (drillStack.length === 0) return getScaleRange(scaleKind, anchorDate);
     const top = drillStack[drillStack.length - 1];
-    return {
-      kind: 'day',
-      start: new Date(top.start_at),
-      end: new Date(top.end_at),
-      divisions: 8,
-      label: top.title,
-      subLabel: '奥行き',
-    };
+    return drillRangeFromTask(
+      new Date(top.start_at),
+      new Date(top.end_at),
+      top.title,
+    );
   }, [scaleKind, anchorDate, drillStack]);
 
   const loadTasks = useCallback(async () => {

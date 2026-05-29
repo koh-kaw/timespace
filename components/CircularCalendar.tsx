@@ -234,7 +234,19 @@ function labelForSlice(range: ScaleRange, i: number): string {
     case 'year': return `${i + 1}月`;
     case 'month': return `${i + 1}`;
     case 'week': return ['月', '火', '水', '木', '金', '土', '日'][i];
-    case 'day': return `${i}`;
+    case 'day': {
+      // Drill-down mode: subLabel contains e.g. "5分単位" or "1時間単位"
+      // Compute actual time for slice i from range.start
+      const totalMs = range.end.getTime() - range.start.getTime();
+      const sliceMs = totalMs / range.divisions;
+      const sliceStart = new Date(range.start.getTime() + i * sliceMs);
+      const h = sliceStart.getHours();
+      const m = sliceStart.getMinutes();
+      // If all slices align on the hour, show HH only; otherwise HH:MM
+      const sliceMin = sliceMs / 60_000;
+      if (sliceMin >= 60) return `${h}時`;
+      return m === 0 ? `${h}:00` : `${h}:${String(m).padStart(2, '0')}`;
+    }
     default: return '';
   }
 }
