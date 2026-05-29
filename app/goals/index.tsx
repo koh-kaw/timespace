@@ -208,46 +208,28 @@ function DecomposeModal({
     setLoading(true);
     setError('');
     try {
-      const prompt = buildPrompt(node);
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+      const res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: `あなたは目標達成の専門家です。
-ユーザーの目標を受け取り、それを階層的に分解してください。
-必ずJSON形式のみで返してください。前置きや説明は不要です。
-フォーマット:
-{
-  "subgoals": [
-    {
-      "title": "サブ目標名",
-      "target_value": 数値または null,
-      "unit": "単位または null",
-      "horizon": "10年/5年/1年/6ヶ月/1ヶ月/1週間/今日",
-      "strategy": "savings/habit/skill/revenue/custom",
-      "children": [
-        { "title": "...", "target_value": null, "unit": null, "horizon": "今日", "strategy": "custom", "children": [] }
-      ]
-    }
-  ],
-  "today_action": "今日すぐできる具体的な一歩（1行）"
-}`,
-          messages: [{ role: 'user', content: prompt }],
+          title: node.title,
+          target_value: node.target_value,
+          unit: node.unit,
+          target_date: node.target_date,
+          strategy_type: node.strategy_type,
         }),
       });
       const data = await res.json();
-      const text = data.content?.[0]?.text ?? '';
-      if (!text) throw new Error('APIからの応答が空です');
-      // Extract JSON - find the first { ... } block
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('JSONが見つかりません: ' + text.slice(0, 200));
-      const parsed: DecomposeResult = JSON.parse(jsonMatch[0]);
-      if (!parsed.subgoals || !Array.isArray(parsed.subgoals)) {
+      if (data.error) throw new Error(data.error);
+      if (!data.subgoals || !Array.isArray(data.subgoals)) {
         throw new Error('不正なレスポンス形式');
       }
-      setResult(parsed);
+      setResult(data as DecomposeResult);
     } catch (e: any) {
       setError('分解に失敗しました: ' + (e?.message || String(e)));
     } finally {
@@ -269,8 +251,8 @@ function DecomposeModal({
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.decomposeBackdrop}>
-        <View style={styles.decomposeSheet}>
+      <Pressable style={styles.decomposeBackdrop} onPress={onClose}>
+        <Pressable style={styles.decomposeSheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <Text style={styles.decomposeTitle}>AIで逆算分解</Text>
           <Text style={styles.decomposeGoal}>「{node.title}」</Text>
@@ -313,8 +295,8 @@ function DecomposeModal({
               </View>
             </ScrollView>
           )}
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -375,8 +357,8 @@ function GoalAddModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.decomposeBackdrop}>
-        <View style={styles.decomposeSheet}>
+      <Pressable style={styles.decomposeBackdrop} onPress={onClose}>
+        <Pressable style={styles.decomposeSheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
             <Text style={styles.decomposeTitle}>
@@ -454,8 +436,8 @@ function GoalAddModal({
               </Pressable>
             </View>
           </ScrollView>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -476,13 +458,6 @@ type DecomposeResult = {
   today_action: string;
 };
 
-function buildPrompt(node: GoalNode): string {
-  const parts = [`目標: ${node.title}`];
-  if (node.target_value) parts.push(`目標値: ${node.target_value.toLocaleString()} ${node.unit || ''}`);
-  if (node.target_date) parts.push(`期限: ${node.target_date}`);
-  if (node.strategy_type) parts.push(`カテゴリ: ${node.strategy_type}`);
-  return parts.join('\n') + '\n\nこの目標を10年→1年→1ヶ月→1週間→今日の具体的アクションまで逆算で分解してください。';
-}
 
 async function saveGoalTree(
   userId: string,

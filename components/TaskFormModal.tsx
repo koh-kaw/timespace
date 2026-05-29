@@ -113,8 +113,9 @@ export function TaskFormModal({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}
+      onPress={onClose}
       >
-        <View style={styles.sheet}>
+        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
 
@@ -270,7 +271,7 @@ export function TaskFormModal({
               </Pressable>
             </View>
           </ScrollView>
-        </View>
+        </Pressable>
       </KeyboardAvoidingView>
     </Modal>
   );
