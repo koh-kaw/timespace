@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
+import { MonthCalendar } from '../components/MonthCalendar';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { getScaleRange, sliceToTimeRange, zoomIn, zoomOut, drillRangeFromTask, type ScaleRange } from '../lib/time';
@@ -27,15 +28,59 @@ function CurrentTime() {
   );
 }
 
+function shiftAnchor(anchor: Date, kind: string, direction: number): Date {
+  const d = new Date(anchor);
+  switch(kind) {
+    case 'day':   d.setDate(d.getDate() + direction); break;
+    case 'week':  d.setDate(d.getDate() + direction * 7); break;
+    case 'month': d.setMonth(d.getMonth() + direction); break;
+    case 'year':  d.setFullYear(d.getFullYear() + direction); break;
+    case 'decade':d.setFullYear(d.getFullYear() + direction * 10); break;
+  }
+  return d;
+}
+
 export default function Home() {
   const userId = useSessionStore((s) => s.userId);
   const { scaleKind, anchorDate, drillStack, selectedSlice,
-    setScale, pushDrill, popDrill, setSelectedSlice } = useViewStore();
+    setScale, setAnchor, pushDrill, popDrill, setSelectedSlice } = useViewStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const swipeRef = React.useRef({ x0: 0, y0: 0 });
+  const panResponder = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
+    onPanResponderGrant: (_, g) => { swipeRef.current = { x0: g.x0, y0: g.y0 }; },
+    onPanResponderRelease: (_, g) => {
+      const dx = g.dx, dy = g.dy;
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if (adx < 20 && ady < 20) return; // too small
+
+      if (adx > ady) {
+        // horizontal: prev/next day (or week/month)
+        if (drillStack.length === 0) {
+          setAnchor(shiftAnchor(anchorDate, scaleKind, dx < 0 ? 1 : -1));
+        }
+      } else {
+        // vertical swipe
+        if (dy < -40) {
+          // swipe up → zoom in (drill down)
+          if (drillStack.length === 0) {
+            const next = zoomIn(scaleKind);
+            if (next) setScale(next);
+          }
+        } else if (dy > 40) {
+          // swipe down → zoom out or pop drill
+          if (drillStack.length > 0) popDrill();
+          else { const prev = zoomOut(scaleKind); if (prev) setScale(prev); }
+        }
+      }
+    },
+  }), [anchorDate, scaleKind, drillStack]);
 
   const range: ScaleRange = useMemo(() => {
     if (drillStack.length === 0) return getScaleRange(scaleKind, anchorDate);
@@ -119,15 +164,26 @@ export default function Home() {
         </View>
 
         {/* ── Calendar ── */}
-        <View style={styles.canvas}>
-          <CircularCalendar
-            size={canvasSize}
-            range={range}
-            tasks={tasks}
-            selectedSlice={selectedSlice}
-            onSlicePress={(i) => { setSelectedSlice(i); setEditingTask(null); setModalOpen(true); }}
-            onTaskPress={(t) => { setSelectedSlice(null); setEditingTask(t); setModalOpen(true); }}
-          />
+        <View style={styles.canvas} {...panResponder.panHandlers}>
+          {(scaleKind === 'month' || scaleKind === 'year' || scaleKind === 'decade') && drillStack.length === 0 ? (
+            <MonthCalendar
+              anchor={anchorDate}
+              tasks={tasks}
+              onDayPress={(date) => {
+                setAnchor(date);
+                setScale('day');
+              }}
+            />
+          ) : (
+            <CircularCalendar
+              size={canvasSize}
+              range={range}
+              tasks={tasks}
+              selectedSlice={selectedSlice}
+              onSlicePress={(i) => { setSelectedSlice(i); setEditingTask(null); setModalOpen(true); }}
+              onTaskPress={(t) => { setSelectedSlice(null); setEditingTask(t); setModalOpen(true); }}
+            />
+          )}
           {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#E8C56A" />}
         </View>
 
