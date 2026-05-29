@@ -58,7 +58,7 @@ export default function Home() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  if (userId === null) return <Redirect href="/signin" />;
+  // if (userId === null) return <Redirect href="/signin" />;  // DEV: auth disabled
 
   const W = Dimensions.get('window').width;
   const canvasSize = Math.min(W, 420);

@@ -112,7 +112,7 @@ export default function Goals() {
       {decomposing && (
         <DecomposeModal
           node={decomposing}
-          userId={userId!}
+          userId={userId ?? 'dev-user'}
           onClose={() => setDecomposing(null)}
           onDone={() => { setDecomposing(null); load(); }}
         />
