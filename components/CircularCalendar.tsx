@@ -204,18 +204,33 @@ export function CircularCalendar({
 
         {taskPaths.map((t, i) => {
           const taskColor = TASK_COLORS[i % TASK_COLORS.length];
+          const s = positionInRange(new Date(t.task.start_at), range);
+          const e = positionInRange(new Date(t.task.end_at), range);
+          const dur = e - s;
+          const midFrac = (s + e) / 2;
+          const midA = fracToRad(midFrac);
+          const orbitR = (rGold + rBlue) / 2;
+          const pr = Math.max(6, Math.min(22, dur * 320)); // planet radius from duration
+          const px = cx + orbitR * Math.cos(midA);
+          const py = cy + orbitR * Math.sin(midA);
+          // faint orbit arc
+          const orbitArcPath = makeArcPath(cx, cy, orbitR, s, e);
           return (
             <Group key={i}>
-              {/* Wide outer glow */}
-              <Path path={t.path} style="stroke" strokeWidth={rGold - rBlue + 8} color={taskColor} opacity={0.08} strokeCap="round">
-                <BlurMask blur={14} style="outer" />
-              </Path>
-              {/* Mid glow */}
-              <Path path={t.path} style="stroke" strokeWidth={8} color={taskColor} opacity={0.2} strokeCap="round">
-                <BlurMask blur={5} style="outer" />
-              </Path>
-              {/* Sharp core */}
-              <Path path={t.path} style="stroke" strokeWidth={2} color={taskColor} opacity={0.9} strokeCap="round" />
+              {/* Faint orbit arc */}
+              <Path path={orbitArcPath} style="stroke" strokeWidth={0.8} color={taskColor} opacity={0.2} strokeCap="round" />
+              {/* Planet atmosphere */}
+              <Circle cx={px} cy={py} r={pr * 2.8} color={taskColor} opacity={0.08}>
+                <BlurMask blur={pr * 1.5} style="normal" />
+              </Circle>
+              {/* Planet glow ring */}
+              <Circle cx={px} cy={py} r={pr * 1.4} color={taskColor} opacity={0.2}>
+                <BlurMask blur={pr * 0.5} style="outer" />
+              </Circle>
+              {/* Planet core */}
+              <Circle cx={px} cy={py} r={pr} color={taskColor} opacity={0.9} />
+              {/* Highlight */}
+              <Circle cx={px - pr * 0.28} cy={py - pr * 0.28} r={pr * 0.32} color="rgba(255,255,255,0.45)" />
             </Group>
           );
         })}
@@ -284,16 +299,20 @@ export function CircularCalendar({
         }}
       />
 
-      {/* Task labels */}
+      {/* Task labels — below planet */}
       {taskPaths.map((t, i) => {
         const taskColor = TASK_COLORS[i % TASK_COLORS.length];
         const s = positionInRange(new Date(t.task.start_at), range);
         const e = positionInRange(new Date(t.task.end_at), range);
+        const dur = e - s;
+        const pr = Math.max(6, Math.min(22, dur * 320));
         const midFrac = (s + e) / 2;
         const midA = fracToRad(midFrac);
-        const midR = (rGold + rBlue) / 2;
-        const lx = cx + midR * Math.cos(midA) - 24;
-        const ly = cy + midR * Math.sin(midA) - 8;
+        const orbitR = (rGold + rBlue) / 2;
+        const px = cx + orbitR * Math.cos(midA);
+        const py = cy + orbitR * Math.sin(midA);
+        const lx = px - 26;
+        const ly = py + pr + 6;
         return (
           <Text
             key={`task-lbl-${t.task.id}`}
@@ -329,7 +348,5 @@ const styles = StyleSheet.create({
   centerWrap: { position: 'absolute', alignItems: 'center' },
   centerTitle: { fontSize: 26, fontWeight: '200', color: 'rgba(255,255,255,0.88)', letterSpacing: 3 },
   centerSub:   { fontSize: 10, fontWeight: '200', color: 'rgba(255,255,255,0.25)', letterSpacing: 1.5, marginTop: 5 },
-  taskLabel: { position: 'absolute', width: 52, textAlign: 'center', fontSize: 9, fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1,
-    overflow: 'hidden' },
+  taskLabel: { position: 'absolute', width: 52, textAlign: 'center', fontSize: 9, fontWeight: '500' },
 });

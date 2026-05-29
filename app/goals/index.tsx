@@ -207,14 +207,18 @@ function DecomposeModal({
   async function runDecompose() {
     setLoading(true);
     setError('');
+    setResult(null);
     try {
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+      if (!supabaseUrl) throw new Error('Supabase URL が設定されていません');
+
       const res = await fetch(`${supabaseUrl}/functions/v1/decompose-goal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
         },
         body: JSON.stringify({
           title: node.title,
@@ -224,14 +228,20 @@ function DecomposeModal({
           strategy_type: node.strategy_type,
         }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+      }
+
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw new Error(String(data.error));
       if (!data.subgoals || !Array.isArray(data.subgoals)) {
-        throw new Error('不正なレスポンス形式');
+        throw new Error('不正なレスポンス: ' + JSON.stringify(data).slice(0, 100));
       }
       setResult(data as DecomposeResult);
     } catch (e: any) {
-      setError('分解に失敗しました: ' + (e?.message || String(e)));
+      setError('エラー: ' + (e?.message || String(e)));
     } finally {
       setLoading(false);
     }
