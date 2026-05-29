@@ -68,15 +68,29 @@ export default function Home() {
       } else {
         // vertical swipe
         if (dy < -40) {
-          // swipe up → zoom in (drill down)
+          // swipe up → zoom in
           if (drillStack.length === 0) {
             const next = zoomIn(scaleKind);
             if (next) setScale(next);
           }
         } else if (dy > 40) {
-          // swipe down → zoom out or pop drill
-          if (drillStack.length > 0) popDrill();
-          else { const prev = zoomOut(scaleKind); if (prev) setScale(prev); }
+          // swipe down
+          if (drillStack.length > 0) {
+            // in drill: go back up
+            popDrill();
+          } else if (scaleKind === 'day' && tasks.length > 0) {
+            // day view: drill into nearest task to now
+            const nowMs = Date.now();
+            const nearest = tasks.reduce((best, t) => {
+              const mid = (new Date(t.start_at).getTime() + new Date(t.end_at).getTime()) / 2;
+              const bestMid = (new Date(best.start_at).getTime() + new Date(best.end_at).getTime()) / 2;
+              return Math.abs(mid - nowMs) < Math.abs(bestMid - nowMs) ? t : best;
+            });
+            pushDrill(nearest);
+          } else {
+            const prev = zoomOut(scaleKind);
+            if (prev) setScale(prev);
+          }
         }
       }
     },
@@ -193,6 +207,12 @@ export default function Home() {
             <Pressable style={styles.fbtn}>
               <Text style={styles.ficon}>🎯</Text>
               <Text style={styles.flbl}>目標</Text>
+            </Pressable>
+          </Link>
+          <Link href="/calendar" asChild>
+            <Pressable style={styles.fbtn}>
+              <Text style={styles.ficon}>📅</Text>
+              <Text style={styles.flbl}>カレンダー</Text>
             </Pressable>
           </Link>
           <Link href="/settings" asChild>
