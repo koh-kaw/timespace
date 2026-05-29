@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { theme } from '../lib/theme';
 import type { ScaleKind } from '../lib/time';
 
 type Props = {
@@ -14,57 +15,51 @@ type Props = {
 };
 
 export function ZoomControls({
-  scaleLabel,
-  scaleSubLabel,
-  breadcrumb,
-  canZoomUp,
-  canZoomDown,
-  onZoomUp,
-  onZoomDown,
+  scaleLabel, scaleSubLabel, breadcrumb,
+  canZoomUp, canZoomDown, onZoomUp, onZoomDown,
 }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
         <Pressable
-          onPress={onZoomUp}
-          disabled={!canZoomUp}
+          onPress={onZoomUp} disabled={!canZoomUp}
           style={[styles.btn, !canZoomUp && styles.btnDisabled]}
         >
-          <Text style={styles.btnText}>↑ 上の階層</Text>
+          <Text style={styles.btnText}>↑ 上へ</Text>
         </Pressable>
+
         <View style={styles.center}>
-          <Text style={styles.scale}>{scaleLabel}</Text>
-          <Text style={styles.sub}>{scaleSubLabel}</Text>
+          <Text style={styles.scaleLabel}>{scaleLabel}</Text>
+          <Text style={styles.scaleSub}>{scaleSubLabel}</Text>
         </View>
+
         <Pressable
-          onPress={onZoomDown}
-          disabled={!canZoomDown}
+          onPress={onZoomDown} disabled={!canZoomDown}
           style={[styles.btn, !canZoomDown && styles.btnDisabled]}
         >
-          <Text style={styles.btnText}>下の階層 ↓</Text>
+          <Text style={styles.btnText}>下へ ↓</Text>
         </Pressable>
       </View>
-      {breadcrumb.length > 1 ? (
+      {breadcrumb.length > 1 && (
         <Text style={styles.crumb}>{breadcrumb.join(' › ')}</Text>
-      ) : null}
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  wrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   btn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 0.5,
-    borderColor: '#D3D1C7',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)',
   },
-  btnDisabled: { opacity: 0.4 },
-  btnText: { fontSize: 12, color: '#444441' },
+  btnDisabled: { opacity: 0.3 },
+  btnText: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   center: { alignItems: 'center' },
-  scale: { fontSize: 16, fontWeight: '500', color: '#2C2C2A' },
-  sub: { fontSize: 12, color: '#888780' },
-  crumb: { textAlign: 'center', fontSize: 12, color: '#888780', marginTop: 8 },
+  scaleLabel: { fontSize: 17, fontWeight: '600', color: '#FFFFFF' },
+  scaleSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  crumb: { textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 6 },
 });

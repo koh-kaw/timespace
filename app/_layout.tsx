@@ -13,13 +13,8 @@ export default function RootLayout() {
   useEffect(() => {
     setupAndroidChannel();
     requestNotificationPermission();
-
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user.id ?? null);
-    });
-    const sub = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user.id ?? null);
-    });
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+    const sub = supabase.auth.onAuthStateChange((_e, session) => setUserId(session?.user.id ?? null));
     return () => sub.data.subscription.unsubscribe();
   }, [setUserId]);
 
@@ -28,13 +23,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#FFFFFF' },
+            headerStyle: { backgroundColor: '#080714' },
             headerShadowVisible: false,
-            headerTitleStyle: { fontWeight: '500' },
+            headerTitleStyle: { fontWeight: '500', color: '#FFFFFF' },
+            headerTintColor: '#8B7FFF',
+            contentStyle: { backgroundColor: '#080714' },
           }}
         >
-          <Stack.Screen name="index" options={{ title: 'Timespace' }} />
-          <Stack.Screen name="signin" options={{ title: 'サインイン' }} />
+          <Stack.Screen name="index" options={{ title: 'Timespace', headerShown: false }} />
+          <Stack.Screen name="signin" options={{ headerShown: false }} />
           <Stack.Screen name="goals/index" options={{ title: '目標' }} />
           <Stack.Screen name="settings" options={{ title: '設定' }} />
         </Stack>
