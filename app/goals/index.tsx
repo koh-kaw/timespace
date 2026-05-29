@@ -199,6 +199,7 @@ function DecomposeModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DecomposeResult | null>(null);
   const [error, setError] = useState('');
+  const [debug, setDebug] = useState('');
 
   useEffect(() => {
     runDecompose();
@@ -213,6 +214,7 @@ function DecomposeModal({
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
       if (!supabaseUrl) throw new Error('Supabase URL が設定されていません');
 
+      setDebug('fetch開始...');
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
 
@@ -239,6 +241,7 @@ function DecomposeModal({
       }
 
       const text = await res.text();
+      setDebug(`HTTP ${res.status} / ${text.slice(0, 80)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
 
       let data: any;
@@ -284,6 +287,12 @@ function DecomposeModal({
             <View style={styles.loadingArea}>
               <ActivityIndicator color="#7F77DD" size="large" />
               <Text style={styles.loadingText}>AIが逆算中…</Text>
+            </View>
+          )}
+
+          {debug !== '' && !error && !result && !loading && (
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: '#E8C56A', fontSize: 11 }}>{debug}</Text>
             </View>
           )}
 
