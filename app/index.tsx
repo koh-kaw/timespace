@@ -43,7 +43,7 @@ function shiftAnchor(anchor: Date, kind: string, direction: number): Date {
 export default function Home() {
   const userId = useSessionStore((s) => s.userId);
   const { scaleKind, anchorDate, drillStack, selectedSlice,
-    setScale, setAnchor, pushDrill, popDrill, setSelectedSlice } = useViewStore();
+    setScale, setAnchor, pushDrill, popDrill, replaceDrill, setSelectedSlice } = useViewStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +55,8 @@ export default function Home() {
   React.useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   const drillRef = React.useRef<typeof drillStack>([]);
   React.useEffect(() => { drillRef.current = drillStack; }, [drillStack]);
+  const replaceDrillRef = React.useRef(replaceDrill);
+  React.useEffect(() => { replaceDrillRef.current = replaceDrill; }, [replaceDrill]);
   const scaleRef = React.useRef(scaleKind);
   React.useEffect(() => { scaleRef.current = scaleKind; }, [scaleKind]);
   const anchorRef = React.useRef(anchorDate);

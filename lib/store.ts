@@ -13,6 +13,7 @@ type ViewState = {
   pushDrill: (task: Task) => void;
   popDrill: () => void;
   clearDrill: () => void;
+  replaceDrill: (task: Task) => void;
   setSelectedSlice: (i: number | null) => void;
 };
 
@@ -29,6 +30,8 @@ export const useViewStore = create<ViewState>((set) => ({
   popDrill: () =>
     set((s) => ({ drillStack: s.drillStack.slice(0, -1), selectedSlice: null })),
   clearDrill: () => set({ drillStack: [], selectedSlice: null }),
+  replaceDrill: (task) =>
+    set((s) => ({ drillStack: [...s.drillStack.slice(0, -1), task], selectedSlice: null })),
   setSelectedSlice: (i) => set({ selectedSlice: i }),
 }));
 
