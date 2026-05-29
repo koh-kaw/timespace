@@ -4,12 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
 import { TaskFormModal } from '../components/TaskFormModal';
-import { ZoomControls } from '../components/ZoomControls';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { getScaleRange, sliceToTimeRange, zoomIn, zoomOut, drillRangeFromTask, type ScaleRange } from '../lib/time';
 import { useSessionStore, useViewStore } from '../lib/store';
 import { fetchTasksInRange, fetchChildTasks, createTask, deleteTask, updateTask } from '../lib/tasks';
 import type { Task } from '../lib/supabase';
+import { SCALE_ORDER } from '../lib/time';
 
 export default function Home() {
   const userId = useSessionStore((s) => s.userId);
@@ -36,7 +36,7 @@ export default function Home() {
       } else {
         setTasks(await fetchChildTasks(drillStack[drillStack.length - 1].id));
       }
-    } catch (err) { console.error('[loadTasks]', err); }
+    } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, [userId, drillStack, range.start, range.end]);
 
@@ -44,48 +44,76 @@ export default function Home() {
 
   if (userId === null) return <Redirect href="/signin" />;
 
-  const screenWidth = Dimensions.get('window').width;
-  const canvasSize = Math.min(screenWidth - 8, 420);
+  const W = Dimensions.get('window').width;
+  const canvasSize = Math.min(W, 420);
   const sliceTime = selectedSlice != null ? sliceToTimeRange(selectedSlice, range) : null;
-
   const closeModal = () => { setModalOpen(false); setEditingTask(null); setSelectedSlice(null); };
 
+  const canUp = !!zoomOut(scaleKind) || drillStack.length > 0;
+  const canDown = !!zoomIn(scaleKind) && drillStack.length === 0;
+
   return (
-    <View style={styles.safe}>
+    <View style={styles.root}>
       <SpaceBackground />
       <SafeAreaView style={styles.inner} edges={['top', 'bottom']}>
-        <ZoomControls
-          scaleKind={scaleKind}
-          scaleLabel={range.label}
-          scaleSubLabel={range.subLabel}
-          breadcrumb={[range.label, ...drillStack.map((t) => t.title)]}
-          canZoomUp={!!zoomOut(scaleKind) || drillStack.length > 0}
-          canZoomDown={!!zoomIn(scaleKind) && drillStack.length === 0}
-          onZoomUp={() => { if (drillStack.length) popDrill(); else { const n = zoomOut(scaleKind); if (n) setScale(n); } }}
-          onZoomDown={() => { const n = zoomIn(scaleKind); if (n) setScale(n); }}
-        />
 
+        {/* ── Zoom bar ── */}
+        <View style={styles.zbar}>
+          <Pressable
+            onPress={() => {
+              if (drillStack.length) popDrill();
+              else { const n = zoomOut(scaleKind); if (n) setScale(n); }
+            }}
+            style={[styles.zbtn, !canUp && styles.zbtnOff]}
+            disabled={!canUp}
+          >
+            <Text style={styles.zbtnTxt}>↑ 上へ</Text>
+          </Pressable>
+
+          <View style={styles.zcenter}>
+            <Text style={styles.zlabel}>{range.label}</Text>
+            <Text style={styles.zsub}>{range.subLabel}</Text>
+            {drillStack.length > 0 && (
+              <Text style={styles.zbreadcrumb}>
+                {[getScaleRange(scaleKind, anchorDate).label, ...drillStack.map(t => t.title)].join(' › ')}
+              </Text>
+            )}
+          </View>
+
+          <Pressable
+            onPress={() => { const n = zoomIn(scaleKind); if (n) setScale(n); }}
+            style={[styles.zbtn, !canDown && styles.zbtnOff]}
+            disabled={!canDown}
+          >
+            <Text style={styles.zbtnTxt}>下へ ↓</Text>
+          </Pressable>
+        </View>
+
+        {/* ── Calendar ── */}
         <View style={styles.canvas}>
           <CircularCalendar
-            size={canvasSize} range={range} tasks={tasks}
+            size={canvasSize}
+            range={range}
+            tasks={tasks}
             selectedSlice={selectedSlice}
             onSlicePress={(i) => { setSelectedSlice(i); setEditingTask(null); setModalOpen(true); }}
             onTaskPress={(t) => { setSelectedSlice(null); setEditingTask(t); setModalOpen(true); }}
           />
-          {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#8B7FFF" />}
+          {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#E8C56A" />}
         </View>
 
+        {/* ── Footer ── */}
         <View style={styles.footer}>
           <Link href="/goals" asChild>
-            <Pressable style={styles.footerBtn}>
-              <Text style={styles.footerIcon}>🎯</Text>
-              <Text style={styles.footerLabel}>目標</Text>
+            <Pressable style={styles.fbtn}>
+              <Text style={styles.ficon}>🎯</Text>
+              <Text style={styles.flbl}>目標</Text>
             </Pressable>
           </Link>
           <Link href="/settings" asChild>
-            <Pressable style={styles.footerBtn}>
-              <Text style={styles.footerIcon}>⚙</Text>
-              <Text style={styles.footerLabel}>設定</Text>
+            <Pressable style={styles.fbtn}>
+              <Text style={styles.ficon}>⚙</Text>
+              <Text style={styles.flbl}>設定</Text>
             </Pressable>
           </Link>
         </View>
@@ -127,16 +155,35 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#080714' },
+  root: { flex: 1, backgroundColor: '#000008' },
   inner: { flex: 1 },
+
+  zbar: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4,
+  },
+  zbtn: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  zbtnOff: { opacity: 0.3 },
+  zbtnTxt: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '300', letterSpacing: 0.5 },
+  zcenter: { alignItems: 'center' },
+  zlabel: { fontSize: 18, fontWeight: '300', color: '#fff', letterSpacing: 1 },
+  zsub: { fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2, letterSpacing: 1 },
+  zbreadcrumb: { fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 3 },
+
   canvas: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
   footer: {
     flexDirection: 'row', justifyContent: 'space-around',
-    paddingVertical: 12, paddingHorizontal: 16,
-    borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(8,7,20,0.8)',
+    paddingVertical: 10, paddingBottom: 16,
+    borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(0,0,8,0.8)',
   },
-  footerBtn: { alignItems: 'center', paddingVertical: 6, paddingHorizontal: 28 },
-  footerIcon: { fontSize: 20 },
-  footerLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 },
+  fbtn: { alignItems: 'center', paddingVertical: 6, paddingHorizontal: 32 },
+  ficon: { fontSize: 20 },
+  flbl: { fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 3, letterSpacing: 1 },
 });
