@@ -59,7 +59,7 @@ export default function Home() {
   React.useEffect(() => { scaleRef.current = scaleKind; }, [scaleKind]);
   const anchorRef = React.useRef(anchorDate);
   React.useEffect(() => { anchorRef.current = anchorDate; }, [anchorDate]);
-  const panResponder = React.useMemo(() => PanResponder.create({
+  const panResponder = React.useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
     onPanResponderGrant: (_, g) => { swipeRef.current = { x0: g.x0, y0: g.y0 }; },
@@ -117,7 +117,7 @@ export default function Home() {
         }
       }
     },
-  }), [anchorDate, scaleKind, drillStack]);
+  })).current;
 
   const range: ScaleRange = useMemo(() => {
     if (drillStack.length === 0) return getScaleRange(scaleKind, anchorDate);
