@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
-import { MonthCalendar } from '../components/MonthCalendar';
+
 import { TaskFormModal } from '../components/TaskFormModal';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { getScaleRange, sliceToTimeRange, zoomIn, zoomOut, drillRangeFromTask, type ScaleRange } from '../lib/time';
@@ -35,28 +35,27 @@ function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown
   onSwipeUp: ()=>void; onSwipeDown: ()=>void;
 }) {
   const start = React.useRef<{x:number,y:number}|null>(null);
+  const moved = React.useRef(false);
   return (
     <View
       style={{flex:1}}
-      onStartShouldSetResponder={()=>true}
-      onStartShouldSetResponderCapture={()=>false}
-      onResponderGrant={(e)=>{
-        start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+      onTouchStart={(e)=>{
+        const t = e.nativeEvent.touches[0];
+        start.current = { x: t.pageX, y: t.pageY };
+        moved.current = false;
       }}
-      onResponderMove={(e)=>{
-        // just track, don't block
-      }}
-      onResponderRelease={(e)=>{
+      onTouchMove={()=>{ moved.current = true; }}
+      onTouchEnd={(e)=>{
         if(!start.current) return;
-        const dx = e.nativeEvent.pageX - start.current.x;
-        const dy = e.nativeEvent.pageY - start.current.y;
+        const t = e.nativeEvent.changedTouches[0];
+        const dx = t.pageX - start.current.x;
+        const dy = t.pageY - start.current.y;
         start.current = null;
         const adx=Math.abs(dx), ady=Math.abs(dy);
-        if(adx<12&&ady<12) return;
+        if(adx<20&&ady<20) return;
         if(adx>ady) { if(dx<0) onSwipeLeft(); else onSwipeRight(); }
         else { if(dy<0) onSwipeUp(); else onSwipeDown(); }
       }}
-      onResponderTerminationRequest={()=>false}
     >
       {children}
     </View>
@@ -194,17 +193,7 @@ export default function Home() {
           }}
         >
         <View style={styles.canvas}>
-          {(scaleKind === 'month' || scaleKind === 'year' || scaleKind === 'decade') && drillStack.length === 0 ? (
-            <MonthCalendar
-              anchor={anchorDate}
-              tasks={tasks}
-              onDayPress={(date) => {
-                setAnchor(date);
-                setScale('day');
-              }}
-            />
-          ) : (
-            <CircularCalendar
+          <CircularCalendar
               size={canvasSize}
               range={range}
               tasks={tasks}
@@ -212,7 +201,6 @@ export default function Home() {
               onSlicePress={(i) => { setSelectedSlice(i); setEditingTask(null); setModalOpen(true); }}
               onTaskPress={(t) => { setSelectedSlice(null); setEditingTask(t); setModalOpen(true); }}
             />
-          )}
           {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#E8C56A" />}
         </View>
         </SwipeView>
