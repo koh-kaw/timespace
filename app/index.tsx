@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
@@ -28,98 +28,44 @@ function CurrentTime() {
   );
 }
 
-function shiftAnchor(anchor: Date, kind: string, direction: number): Date {
-  const d = new Date(anchor);
-  switch(kind) {
-    case 'day':   d.setDate(d.getDate() + direction); break;
-    case 'week':  d.setDate(d.getDate() + direction * 7); break;
-    case 'month': d.setMonth(d.getMonth() + direction); break;
-    case 'year':  d.setFullYear(d.getFullYear() + direction); break;
-    case 'decade':d.setFullYear(d.getFullYear() + direction * 10); break;
-  }
-  return d;
+
+function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown }: {
+  children: React.ReactNode;
+  onSwipeLeft: ()=>void; onSwipeRight: ()=>void;
+  onSwipeUp: ()=>void; onSwipeDown: ()=>void;
+}) {
+  const start = React.useRef<{x:number,y:number}|null>(null);
+  return (
+    <View
+      style={{flex:1}}
+      onStartShouldSetResponder={()=>true}
+      onMoveShouldSetResponder={(_,g)=>Math.abs(g.dx)>6||Math.abs(g.dy)>6}
+      onResponderGrant={(_,g)=>{ start.current={x:g.x0,y:g.y0}; }}
+      onResponderRelease={(_,g)=>{
+        if(!start.current) return;
+        const dx=g.moveX-start.current.x, dy=g.moveY-start.current.y;
+        const adx=Math.abs(dx), ady=Math.abs(dy);
+        start.current=null;
+        if(adx<15&&ady<15) return;
+        if(adx>ady) { if(dx<0) onSwipeLeft(); else onSwipeRight(); }
+        else { if(dy<0) onSwipeUp(); else onSwipeDown(); }
+      }}
+    >
+      {children}
+    </View>
+  );
 }
 
 export default function Home() {
   const userId = useSessionStore((s) => s.userId);
   const { scaleKind, anchorDate, drillStack, selectedSlice,
-    setScale, setAnchor, pushDrill, popDrill, replaceDrill, setSelectedSlice } = useViewStore();
+    setScale, setAnchor, pushDrill, popDrill, setSelectedSlice } = useViewStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const swipeRef = React.useRef({ x0: 0, y0: 0 });
-  const tasksRef = React.useRef<typeof tasks>([]);
-  React.useEffect(() => { tasksRef.current = tasks; }, [tasks]);
-  const drillRef = React.useRef<typeof drillStack>([]);
-  React.useEffect(() => { drillRef.current = drillStack; }, [drillStack]);
-  const replaceDrillRef = React.useRef(replaceDrill);
-  React.useEffect(() => { replaceDrillRef.current = replaceDrill; }, [replaceDrill]);
-  const scaleRef = React.useRef(scaleKind);
-  React.useEffect(() => { scaleRef.current = scaleKind; }, [scaleKind]);
-  const anchorRef = React.useRef(anchorDate);
-  React.useEffect(() => { anchorRef.current = anchorDate; }, [anchorDate]);
-  const panResponder = React.useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
-    onPanResponderGrant: (_, g) => { swipeRef.current = { x0: g.x0, y0: g.y0 }; },
-    onPanResponderRelease: (_, g) => {
-      const dx = g.dx, dy = g.dy;
-      const adx = Math.abs(dx), ady = Math.abs(dy);
-      if (adx < 20 && ady < 20) return; // too small
-
-      if (adx > ady) {
-        if (drillStack.length > 0) {
-          // In drill: move to sibling task (prev/next by start time)
-          const currentTask = drillStack[drillStack.length - 1];
-          const parentTasks = drillStack.length === 1 ? tasksRef.current : [];
-          // Sort siblings by start time
-          const siblings = [...parentTasks].sort(
-            (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-          );
-          const currentIdx = siblings.findIndex(t => t.id === currentTask.id);
-          if (currentIdx !== -1) {
-            const targetIdx = dx < 0 ? currentIdx + 1 : currentIdx - 1;
-            if (targetIdx >= 0 && targetIdx < siblings.length) {
-              // Pop current and push sibling
-              popDrill();
-              setTimeout(() => pushDrill(siblings[targetIdx]), 50);
-            }
-          }
-        } else {
-          // No drill: prev/next day
-          setAnchor(shiftAnchor(anchorDate, scaleKind, dx < 0 ? 1 : -1));
-        }
-      } else {
-        // vertical swipe
-        if (dy > 40) {
-          // swipe down → zoom out or pop drill
-          if (drillStack.length > 0) {
-            popDrill();
-          } else {
-            const prev = zoomOut(scaleKind);
-            if (prev) setScale(prev);
-          }
-        } else if (dy < -40) {
-          // swipe up → drill down to nearest task, or zoom in
-          if (drillStack.length === 0 && scaleKind === 'day' && tasksRef.current.length > 0) {
-            const nowMs = Date.now();
-            const nearest = tasksRef.current.reduce((best, t) => {
-              const mid = (new Date(t.start_at).getTime() + new Date(t.end_at).getTime()) / 2;
-              const bestMid = (new Date(best.start_at).getTime() + new Date(best.end_at).getTime()) / 2;
-              return Math.abs(mid - nowMs) < Math.abs(bestMid - nowMs) ? t : best;
-            });
-            pushDrill(nearest);
-          } else if (drillStack.length === 0) {
-            const next = zoomIn(scaleKind);
-            if (next) setScale(next);
-          }
-        }
-      }
-    },
-  })).current;
 
   const range: ScaleRange = useMemo(() => {
     if (drillStack.length === 0) return getScaleRange(scaleKind, anchorDate);
@@ -203,7 +149,44 @@ export default function Home() {
         </View>
 
         {/* ── Calendar ── */}
-        <View style={styles.canvas} {...panResponder.panHandlers}>
+        <SwipeView
+          onSwipeLeft={() => {
+            if (drillStack.length > 0) {
+              const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+              const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              if (idx !== -1 && idx < tasks2.length-1) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx+1]),30); }
+            } else {
+              const d=new Date(anchorDate); d.setDate(d.getDate()+1); setAnchor(d);
+            }
+          }}
+          onSwipeRight={() => {
+            if (drillStack.length > 0) {
+              const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+              const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              if (idx > 0) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx-1]),30); }
+            } else {
+              const d=new Date(anchorDate); d.setDate(d.getDate()-1); setAnchor(d);
+            }
+          }}
+          onSwipeUp={() => {
+            if (drillStack.length === 0 && scaleKind === 'day' && tasks.length > 0) {
+              const nowMs = Date.now();
+              const nearest = tasks.reduce((b,t)=>{
+                const mid=(new Date(t.start_at).getTime()+new Date(t.end_at).getTime())/2;
+                const bMid=(new Date(b.start_at).getTime()+new Date(b.end_at).getTime())/2;
+                return Math.abs(mid-nowMs)<Math.abs(bMid-nowMs)?t:b;
+              });
+              pushDrill(nearest);
+            } else if (drillStack.length === 0) {
+              const next=zoomIn(scaleKind); if(next) setScale(next);
+            }
+          }}
+          onSwipeDown={() => {
+            if (drillStack.length > 0) popDrill();
+            else { const prev=zoomOut(scaleKind); if(prev) setScale(prev); }
+          }}
+        >
+        <View style={styles.canvas}>
           {(scaleKind === 'month' || scaleKind === 'year' || scaleKind === 'decade') && drillStack.length === 0 ? (
             <MonthCalendar
               anchor={anchorDate}
@@ -225,6 +208,7 @@ export default function Home() {
           )}
           {loading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#E8C56A" />}
         </View>
+        </SwipeView>
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
