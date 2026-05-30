@@ -325,12 +325,24 @@ export function CircularCalendar({
 
       </Canvas>
 
-      {/* Transparent touch layer */}
-      <Pressable
+      {/* Transparent touch layer — tap only, not swipe */}
+      <View
         style={StyleSheet.absoluteFill}
-        onPress={(e) => {
-          const { locationX, locationY } = e.nativeEvent;
-          handleTouch(locationX, locationY);
+        onTouchStart={(e) => {
+          const t = e.nativeEvent.touches[0];
+          (e.currentTarget as any)._tapStart = { x: t.pageX, y: t.pageY, lx: t.locationX, ly: t.locationY };
+        }}
+        onTouchEnd={(e) => {
+          const s = (e.currentTarget as any)._tapStart;
+          if (!s) return;
+          const t = e.nativeEvent.changedTouches[0];
+          const dx = Math.abs(t.pageX - s.x);
+          const dy = Math.abs(t.pageY - s.y);
+          (e.currentTarget as any)._tapStart = null;
+          // Only handle as tap if barely moved (not a swipe)
+          if (dx < 12 && dy < 12) {
+            handleTouch(s.lx, s.ly);
+          }
         }}
       />
 

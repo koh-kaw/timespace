@@ -68,22 +68,20 @@ function DrillSwipeOverlay({ size, onSwipeLeft, onSwipeRight, onSwipeDown }: {
   );
 }
 
-function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown }: {
+function SwipeView({ children, drillDepth=0, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown }: {
   children: React.ReactNode;
+  drillDepth?: number;
   onSwipeLeft: ()=>void; onSwipeRight: ()=>void;
   onSwipeUp: ()=>void; onSwipeDown: ()=>void;
 }) {
   const start = React.useRef<{x:number,y:number}|null>(null);
-  const moved = React.useRef(false);
   return (
     <View
       style={{flex:1}}
       onTouchStart={(e)=>{
         const t = e.nativeEvent.touches[0];
         start.current = { x: t.pageX, y: t.pageY };
-        moved.current = false;
       }}
-      onTouchMove={()=>{ moved.current = true; }}
       onTouchEnd={(e)=>{
         if(!start.current) return;
         const t = e.nativeEvent.changedTouches[0];
@@ -91,10 +89,12 @@ function SwipeView({ children, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown
         const dy = t.pageY - start.current.y;
         start.current = null;
         const adx=Math.abs(dx), ady=Math.abs(dy);
-        if(adx<20&&ady<20) return;
+        const threshold = 15;
+        if(adx<threshold&&ady<threshold) return;
         if(adx>ady) { if(dx<0) onSwipeLeft(); else onSwipeRight(); }
         else { if(dy<0) onSwipeUp(); else onSwipeDown(); }
       }}
+      onTouchCancel={()=>{ start.current = null; }}
     >
       {children}
     </View>
@@ -195,6 +195,7 @@ export default function Home() {
 
         {/* ── Calendar ── */}
         <SwipeView
+          drillDepth={drillStack.length}
           onSwipeLeft={() => {
             if (drillStack.length > 0) {
               const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
