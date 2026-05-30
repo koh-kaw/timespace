@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
@@ -107,6 +107,7 @@ export default function Home() {
     setScale, setAnchor, pushDrill, popDrill, setSelectedSlice } = useViewStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [parentTasks, setParentTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -123,7 +124,9 @@ export default function Home() {
     setLoading(true);
     try {
       if (drillStack.length === 0) {
-        setTasks(await fetchTasksInRange(userId, range.start, range.end, null));
+        const t = await fetchTasksInRange(userId, range.start, range.end, null);
+        setTasks(t);
+        setParentTasks(t);
       } else {
         setTasks(await fetchChildTasks(drillStack[drillStack.length - 1].id));
       }
@@ -198,28 +201,26 @@ export default function Home() {
           drillDepth={drillStack.length}
           onSwipeLeft={() => {
             if (drillStack.length > 0) {
-              const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
-              const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
-              Alert.alert('LEFT', `drill=${drillStack.length} tasks=${tasks2.length} idx=${idx}`);
-              if (idx !== -1 && idx < tasks2.length-1) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx+1]),30); }
+              const siblings = parentTasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+              const idx = siblings.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              if (idx !== -1 && idx < siblings.length-1) { popDrill(); setTimeout(()=>pushDrill(siblings[idx+1]),30); }
             } else {
               const d=new Date(anchorDate); d.setDate(d.getDate()+1); setAnchor(d);
             }
           }}
           onSwipeRight={() => {
             if (drillStack.length > 0) {
-              const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
-              const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
-              Alert.alert('RIGHT', `drill=${drillStack.length} tasks=${tasks2.length} idx=${idx}`);
-              if (idx > 0) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx-1]),30); }
+              const siblings = parentTasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+              const idx = siblings.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              if (idx > 0) { popDrill(); setTimeout(()=>pushDrill(siblings[idx-1]),30); }
             } else {
               const d=new Date(anchorDate); d.setDate(d.getDate()-1); setAnchor(d);
             }
           }}
           onSwipeUp={() => {
-            if (drillStack.length === 0 && scaleKind === 'day' && tasks.length > 0) {
+            if (drillStack.length === 0 && scaleKind === 'day' && parentTasks.length > 0) {
               const nowMs = Date.now();
-              const nearest = tasks.reduce((b,t)=>{
+              const nearest = parentTasks.reduce((b,t)=>{
                 const mid=(new Date(t.start_at).getTime()+new Date(t.end_at).getTime())/2;
                 const bMid=(new Date(b.start_at).getTime()+new Date(b.end_at).getTime())/2;
                 return Math.abs(mid-nowMs)<Math.abs(bMid-nowMs)?t:b;
@@ -245,7 +246,7 @@ export default function Home() {
             />
           {/* Swipe overlay for drill mode — covers canvas to capture swipes */}
           {drillStack.length > 0 && (() => {
-            const sortedTasks = [...tasks].sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
+            const sortedTasks = [...parentTasks].sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
             const curId = drillStack[drillStack.length-1].id;
             const idx = sortedTasks.findIndex(t=>t.id===curId);
             return (
