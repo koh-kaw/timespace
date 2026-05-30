@@ -183,11 +183,17 @@ export function CircularCalendar({
       lanes[i] = lane;
     }
 
-    const laneStep = (rGold - rBlue) / 3;
+    // Distribute lanes: 0=middle, 1=outer, 2=inner, 3=further outer, etc.
+    const maxLane = Math.max(...lanes, 0);
+    const totalLanes = maxLane + 1;
+    const gap = (rGold - rBlue);
+    const step = gap / Math.max(totalLanes + 1, 2);
+
     return validTasks.map(({ task, p1, p2 }, i) => {
       const lane = lanes[i];
-      const rMid = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
-      return { task, path: makeArcPath(cx, cy, rMid, p1, p2), p1, p2, lane };
+      // Spread lanes evenly: lane 0 = innermost area, increasing outward
+      const rMid = rBlue + step * (lane + 1);
+      return { task, path: makeArcPath(cx, cy, rMid, p1, p2), p1, p2, lane, rMid };
     });
   }, [tasks, range, cx, cy, rGold, rBlue]);
 
@@ -231,11 +237,9 @@ export function CircularCalendar({
           const midFrac = (s + e) / 2;
           const midA = fracToRad(midFrac);
           const ringGap = rGold - rBlue;
-          const laneStep = ringGap / 3;
-          const lane = t.lane ?? 0;
-          const orbitR = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
+          const orbitR = (t as any).rMid ?? (rGold + rBlue) / 2;
           const arcLen = dur * 2 * Math.PI * orbitR;
-          const pr = Math.max(ringGap * 0.32, Math.min(ringGap * 0.62, arcLen * 0.16));
+          const pr = Math.max(ringGap * 0.28, Math.min(ringGap * 0.55, arcLen * 0.15));
           const px = cx + orbitR * Math.cos(midA);
           const py = cy + orbitR * Math.sin(midA);
           const arcPath = makeArcPath(cx, cy, orbitR, s, e);
@@ -374,11 +378,9 @@ export function CircularCalendar({
         const s = t.p1, e = t.p2;
         const dur = e - s;
         const ringGap = rGold - rBlue;
-        const laneStep = ringGap / 3;
-        const lane = t.lane ?? 0;
-        const orbitR = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
+        const orbitR = (t as any).rMid ?? (rGold + rBlue) / 2;
         const arcLen = dur * 2 * Math.PI * orbitR;
-        const pr = Math.max(ringGap * 0.32, Math.min(ringGap * 0.62, arcLen * 0.16));
+        const pr = Math.max(ringGap * 0.28, Math.min(ringGap * 0.55, arcLen * 0.15));
         const midFrac = (s + e) / 2;
         const midA = fracToRad(midFrac);
         const px = cx + orbitR * Math.cos(midA);
