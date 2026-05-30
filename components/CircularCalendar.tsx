@@ -158,16 +158,38 @@ export function CircularCalendar({
     return makeArcPath(cx, cy, (rGold + rBlue) / 2, selectedSlice / N, (selectedSlice + 1) / N);
   }, [cx, cy, rGold, rBlue, selectedSlice]);
 
-  const taskPaths = useMemo(() => tasks.map(task => {
-    const s = new Date(task.start_at), e = new Date(task.end_at);
-    if (e <= range.start || s >= range.end) return null;
-    const p1 = positionInRange(s, range);
-    const p2 = positionInRange(e, range);
-    if (p2 <= p1) return null; // skip invalid
-    const rMid = (rGold + rBlue) / 2;
-    return { task, path: makeArcPath(cx, cy, rMid, p1, p2) };
-  }).filter(Boolean) as { task: Task; path: ReturnType<typeof Skia.Path.Make> }[],
-    [tasks, range, cx, cy, rGold, rBlue]);
+  const taskPaths = useMemo(() => {
+    const validTasks = tasks.map(task => {
+      const s = new Date(task.start_at), e = new Date(task.end_at);
+      if (e <= range.start || s >= range.end) return null;
+      const p1 = positionInRange(s, range);
+      const p2 = positionInRange(e, range);
+      if (p2 <= p1) return null;
+      return { task, p1, p2 };
+    }).filter(Boolean) as { task: Task; p1: number; p2: number }[];
+
+    // Assign orbit lanes to overlapping tasks
+    const lanes: number[] = validTasks.map(() => 0);
+    for (let i = 0; i < validTasks.length; i++) {
+      const usedLanes = new Set<number>();
+      for (let j = 0; j < i; j++) {
+        // Check overlap
+        if (validTasks[i].p1 < validTasks[j].p2 && validTasks[i].p2 > validTasks[j].p1) {
+          usedLanes.add(lanes[j]);
+        }
+      }
+      let lane = 0;
+      while (usedLanes.has(lane)) lane++;
+      lanes[i] = lane;
+    }
+
+    const laneStep = (rGold - rBlue) / 3;
+    return validTasks.map(({ task, p1, p2 }, i) => {
+      const lane = lanes[i];
+      const rMid = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
+      return { task, path: makeArcPath(cx, cy, rMid, p1, p2), p1, p2, lane };
+    });
+  }, [tasks, range, cx, cy, rGold, rBlue]);
 
   const nowGold = nowFrac != null ? polarXY(cx, cy, rGold, fracToRad(nowFrac)) : null;
   const nowBlue = nowFrac != null ? polarXY(cx, cy, rBlue, fracToRad(nowFrac)) : null;
@@ -204,16 +226,16 @@ export function CircularCalendar({
 
         {taskPaths.map((t, i) => {
           const taskColor = TASK_COLORS[i % TASK_COLORS.length];
-          const s = positionInRange(new Date(t.task.start_at), range);
-          const e = positionInRange(new Date(t.task.end_at), range);
+          const s = t.p1, e = t.p2;
           const dur = e - s;
           const midFrac = (s + e) / 2;
           const midA = fracToRad(midFrac);
-          const orbitR = (rGold + rBlue) / 2;
-          // Arc width matches the ring gap; planet size = arc chord length approx
           const ringGap = rGold - rBlue;
-          const arcLen = dur * 2 * Math.PI * orbitR; // arc length in px
-          const pr = Math.max(ringGap * 0.38, Math.min(ringGap * 0.72, arcLen * 0.18));
+          const laneStep = ringGap / 3;
+          const lane = t.lane ?? 0;
+          const orbitR = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
+          const arcLen = dur * 2 * Math.PI * orbitR;
+          const pr = Math.max(ringGap * 0.32, Math.min(ringGap * 0.62, arcLen * 0.16));
           const px = cx + orbitR * Math.cos(midA);
           const py = cy + orbitR * Math.sin(midA);
           const arcPath = makeArcPath(cx, cy, orbitR, s, e);
@@ -349,13 +371,16 @@ export function CircularCalendar({
       {/* Task labels — below planet */}
       {taskPaths.map((t, i) => {
         const taskColor = TASK_COLORS[i % TASK_COLORS.length];
-        const s = positionInRange(new Date(t.task.start_at), range);
-        const e = positionInRange(new Date(t.task.end_at), range);
+        const s = t.p1, e = t.p2;
         const dur = e - s;
-        const pr = Math.max(6, Math.min(22, dur * 320));
+        const ringGap = rGold - rBlue;
+        const laneStep = ringGap / 3;
+        const lane = t.lane ?? 0;
+        const orbitR = (rGold + rBlue) / 2 + (lane - 0.5) * laneStep * (lane % 2 === 0 ? 1 : -1);
+        const arcLen = dur * 2 * Math.PI * orbitR;
+        const pr = Math.max(ringGap * 0.32, Math.min(ringGap * 0.62, arcLen * 0.16));
         const midFrac = (s + e) / 2;
         const midA = fracToRad(midFrac);
-        const orbitR = (rGold + rBlue) / 2;
         const px = cx + orbitR * Math.cos(midA);
         const py = cy + orbitR * Math.sin(midA);
         const lx = px - 26;
