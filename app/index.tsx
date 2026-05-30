@@ -296,6 +296,12 @@ export default function Home() {
               <Text style={styles.flbl}>メモ</Text>
             </Pressable>
           </Link>
+          <Link href="/todos" asChild>
+            <Pressable style={styles.fbtn}>
+              <Text style={styles.ficon}>✅</Text>
+              <Text style={styles.flbl}>TODO</Text>
+            </Pressable>
+          </Link>
           <Link href="/settings" asChild>
             <Pressable style={styles.fbtn}>
               <Text style={styles.ficon}>⚙</Text>
