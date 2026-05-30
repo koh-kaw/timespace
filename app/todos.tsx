@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, TextInput,
   FlatList, Animated, Dimensions, Platform,
-  KeyboardAvoidingView, ScrollView,
+  KeyboardAvoidingView, ScrollView, Modal,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { supabase } from '../lib/supabase';
@@ -167,10 +168,8 @@ function TodoForm({ todo, lists, userId, onClose, onSaved }: {
           </ScrollView>
         </>}
 
-        <Text style={styles.formLabel}>期限 (YYYY-MM-DD)</Text>
-        <TextInput value={dueDate} onChangeText={setDueDate}
-          placeholder="2026-12-31" placeholderTextColor="rgba(255,255,255,0.2)"
-          style={styles.formInput} keyboardType="numbers-and-punctuation" />
+        <Text style={styles.formLabel}>期限</Text>
+        <DatePickerField value={dueDate} onChange={setDueDate} />
 
         <View style={styles.formActions}>
           <Pressable onPress={onClose} style={styles.formCancelBtn}>
@@ -454,4 +453,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' },
   formSaveBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10,
     backgroundColor: GOLD },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  dateBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)' },
+  dateBtnText: { fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '300' },
+  dateClearBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  datePickerSheet: { backgroundColor: '#0a0818', borderTopLeftRadius: 24,
+    borderTopRightRadius: 24, paddingBottom: 40,
+    borderTopWidth: 0.5, borderColor: 'rgba(255,255,255,0.15)' },
+  datePickerHeader: { flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: 16,
+    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.08)' },
 });
