@@ -36,6 +36,62 @@ export async function fetchTasksInRange(
   return data as Task[];
 }
 
+/** 繰り返しタスクを指定範囲内に展開する */
+export function expandRecurringTasks(tasks: Task[], rangeStart: Date, rangeEnd: Date): Task[] {
+  const result: Task[] = [];
+  for (const task of tasks) {
+    result.push(task);
+    if (!task.recurrence_rule) continue;
+
+    const rule = task.recurrence_rule;
+    const origStart = new Date(task.start_at);
+    const origEnd = new Date(task.end_at);
+    const duration = origEnd.getTime() - origStart.getTime();
+
+    // Parse FREQ
+    const freqMatch = rule.match(/FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)/);
+    if (!freqMatch) continue;
+    const freq = freqMatch[1];
+
+    // Parse BYDAY for weekly
+    const byDayMatch = rule.match(/BYDAY=([^;]+)/);
+    const byDays = byDayMatch ? byDayMatch[1].split(',') : null;
+    const dayMap: Record<string, number> = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+    let cursor = new Date(origStart);
+    // Advance to next occurrence
+    const advance = () => {
+      switch(freq) {
+        case 'DAILY':  cursor.setDate(cursor.getDate() + 1); break;
+        case 'WEEKLY': cursor.setDate(cursor.getDate() + 1); break;
+        case 'MONTHLY': cursor.setMonth(cursor.getMonth() + 1); break;
+        case 'YEARLY': cursor.setFullYear(cursor.getFullYear() + 1); break;
+      }
+    };
+
+    advance();
+    let safety = 0;
+    while (cursor < rangeEnd && safety++ < 400) {
+      if (cursor >= rangeStart) {
+        // For BYDAY filter (weekly on specific days)
+        const dow = ['SU','MO','TU','WE','TH','FR','SA'][cursor.getDay()];
+        if (!byDays || byDays.includes(dow)) {
+          const newStart = new Date(cursor);
+          const newEnd = new Date(cursor.getTime() + duration);
+          result.push({
+            ...task,
+            id: `${task.id}_${cursor.getTime()}`, // virtual id
+            start_at: newStart.toISOString(),
+            end_at: newEnd.toISOString(),
+          });
+        }
+      }
+      advance();
+    }
+  }
+  return result;
+}
+
 export async function fetchChildTasks(parentId: string): Promise<Task[]> {
   const { data, error } = await supabase
     .from('tasks')

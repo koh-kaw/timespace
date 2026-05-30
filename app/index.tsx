@@ -8,7 +8,7 @@ import { TaskFormModal } from '../components/TaskFormModal';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { getScaleRange, sliceToTimeRange, zoomIn, zoomOut, drillRangeFromTask, type ScaleRange } from '../lib/time';
 import { useSessionStore, useViewStore } from '../lib/store';
-import { fetchTasksInRange, fetchChildTasks, createTask, deleteTask, updateTask } from '../lib/tasks';
+import { fetchTasksInRange, fetchChildTasks, expandRecurringTasks, createTask, deleteTask, updateTask } from '../lib/tasks';
 import type { Task } from '../lib/supabase';
 import { SCALE_ORDER } from '../lib/time';
 
@@ -124,7 +124,17 @@ export default function Home() {
     setLoading(true);
     try {
       if (drillStack.length === 0) {
-        const t = await fetchTasksInRange(userId, range.start, range.end, null);
+        const raw = await fetchTasksInRange(userId, range.start, range.end, null);
+        // Also fetch tasks with recurrence that might start before this range
+        const prevStart = new Date(range.start.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const recurring = await fetchTasksInRange(userId, prevStart, range.start, null);
+        const allRaw = [...raw, ...recurring.filter(t => t.recurrence_rule)];
+        const t = expandRecurringTasks(allRaw, range.start, range.end)
+          .filter(task => {
+            const s = new Date(task.start_at);
+            return s >= range.start && s < range.end;
+          })
+          .sort((a,b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
         setTasks(t);
         setParentTasks(t);
       } else {
