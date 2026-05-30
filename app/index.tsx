@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, Link } from 'expo-router';
 import { CircularCalendar } from '../components/CircularCalendar';
@@ -200,6 +200,7 @@ export default function Home() {
             if (drillStack.length > 0) {
               const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
               const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              Alert.alert('LEFT', `drill=${drillStack.length} tasks=${tasks2.length} idx=${idx}`);
               if (idx !== -1 && idx < tasks2.length-1) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx+1]),30); }
             } else {
               const d=new Date(anchorDate); d.setDate(d.getDate()+1); setAnchor(d);
@@ -209,6 +210,7 @@ export default function Home() {
             if (drillStack.length > 0) {
               const tasks2 = tasks.slice().sort((a,b)=>new Date(a.start_at).getTime()-new Date(b.start_at).getTime());
               const idx = tasks2.findIndex(t=>t.id===drillStack[drillStack.length-1].id);
+              Alert.alert('RIGHT', `drill=${drillStack.length} tasks=${tasks2.length} idx=${idx}`);
               if (idx > 0) { popDrill(); setTimeout(()=>pushDrill(tasks2[idx-1]),30); }
             } else {
               const d=new Date(anchorDate); d.setDate(d.getDate()-1); setAnchor(d);
