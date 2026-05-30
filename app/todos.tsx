@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DatePicker } from '../components/DatePicker';
 import { SpaceBackground } from '../components/SpaceBackground';
 import { supabase } from '../lib/supabase';
 import { useSessionStore } from '../lib/store';
@@ -110,13 +111,13 @@ function TodoForm({ todo, lists, userId, onClose, onSaved }: {
   const [title, setTitle] = useState(todo?.title ?? '');
   const [priority, setPriority] = useState<Priority>(todo?.priority ?? 'medium');
   const [listId, setListId] = useState<string | null>(todo?.list_id ?? null);
-  const [dueDate, setDueDate] = useState(todo?.due_date ? todo.due_date.slice(0, 10) : '');
+  const [dueDate, setDueDate] = useState<Date | null>(todo?.due_date ? new Date(todo.due_date) : null);
 
   const save = async () => {
     if (!title.trim()) return;
     const payload = {
       title: title.trim(), priority, list_id: listId,
-      due_date: dueDate || null,
+      due_date: dueDate ? dueDate.toISOString().slice(0, 10) : null,
     };
     if (todo) {
       await supabase.from('todos').update(payload).eq('id', todo.id);

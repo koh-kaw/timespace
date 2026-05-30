@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DatePicker } from '../../components/DatePicker';
 import { useSessionStore } from '../../lib/store';
 import {
   buildGoalTree,
@@ -401,11 +402,11 @@ function GoalAddModal({
   const [title, setTitle] = useState('');
   const [target, setTarget] = useState('');
   const [unit, setUnit] = useState('');
-  const [dateStr, setDateStr] = useState('');
+  const [dateStr, setDateStr] = useState<Date | null>(null);
   const [strategy, setStrategy] = useState<NonNullable<Goal['strategy_type']>>('custom');
 
   useEffect(() => {
-    if (visible) { setTitle(''); setTarget(''); setUnit(''); setDateStr(''); setStrategy('custom'); }
+    if (visible) { setTitle(''); setTarget(''); setUnit(''); setDateStr(null); setStrategy('custom'); }
   }, [visible]);
 
   const strategies: { label: string; value: NonNullable<Goal['strategy_type']> }[] = [
@@ -454,13 +455,7 @@ function GoalAddModal({
                 />
               </View>
             </View>
-            <Text style={styles.label}>期限</Text>
-            <TextInput
-              value={dateStr}
-              onChangeText={setDateStr}
-              placeholder="2040-01-01"
-              style={styles.input}
-            />
+            <DatePicker label="期限" value={dateStr} onChange={setDateStr} nullable placeholder="期限なし" minimumDate={new Date()} />
             <Text style={styles.label}>カテゴリ</Text>
             <View style={styles.chips}>
               {strategies.map((s) => (
@@ -487,7 +482,7 @@ function GoalAddModal({
                     parent_id: parentId,
                     target_value: target ? Number(target) : null,
                     unit: unit.trim() || null,
-                    target_date: dateStr ? new Date(dateStr) : null,
+                    target_date: dateStr,
                     strategy_type: strategy,
                   });
                 }}
