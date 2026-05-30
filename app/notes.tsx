@@ -20,36 +20,114 @@ type Note = {
   created_at: string; updated_at: string;
 };
 
+// ─── Inline Markdown Editor (Notion-like) ───────────────────
+function InlineMarkdownEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const lines = value.split('\n');
+  const inputRef = useRef<TextInput>(null);
+  const [cursor, setCursor] = useState({ start: value.length, end: value.length });
+
+  // When Enter pressed in a line, detect context and auto-format
+  const handleKeyPress = (e: any) => {
+    // handled via onChangeText
+  };
+
+  const handleChange = (text: string) => {
+    // Auto-list continuation: if previous line was "- ", add new "- "
+    const lines2 = text.split('\n');
+    const prev = lines2[lines2.length - 2] ?? '';
+    const cur = lines2[lines2.length - 1] ?? '';
+    if (cur === '' && prev.match(/^- $|^\* $/)) {
+      // Remove empty list item
+      lines2.splice(lines2.length - 2, 1);
+      onChange(lines2.join('\n'));
+      return;
+    }
+    if (cur === '' && prev.match(/^- .+|^\* .+/)) {
+      lines2[lines2.length - 1] = '- ';
+      onChange(lines2.join('\n'));
+      return;
+    }
+    onChange(text);
+  };
+
+  return (
+    <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="always">
+      {lines.map((line, i) => (
+        <BlockLine key={i} line={line} isLast={i === lines.length - 1} />
+      ))}
+      {/* Invisible full-size input captures all typing */}
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={handleChange}
+        style={styles.hiddenInput}
+        multiline
+        autoCorrect={false}
+        spellCheck={false}
+        onSelectionChange={e => setCursor(e.nativeEvent.selection)}
+      />
+    </ScrollView>
+  );
+}
+
+function BlockLine({ line, isLast }: { line: string; isLast: boolean }) {
+  if (line.startsWith('# ')) return <Text style={styles.mdH1}>{line.slice(2)}</Text>;
+  if (line.startsWith('## ')) return <Text style={styles.mdH2}>{line.slice(3)}</Text>;
+  if (line.startsWith('### ')) return <Text style={styles.mdH3}>{line.slice(4)}</Text>;
+  if (line.startsWith('> ')) return (
+    <View style={styles.mdQuote}><Text style={styles.mdQuoteText}>{line.slice(2)}</Text></View>
+  );
+  if (line.startsWith('- ') || line.startsWith('* ')) return (
+    <View style={styles.mdLiRow}>
+      <Text style={styles.mdBullet}>•</Text>
+      <InlineText text={line.slice(2)} style={styles.mdLiText} />
+    </View>
+  );
+  if (/^\d+\. /.test(line)) {
+    const m = line.match(/^(\d+)\. (.*)/)!;
+    return (
+      <View style={styles.mdLiRow}>
+        <Text style={styles.mdBullet}>{m[1]}.</Text>
+        <InlineText text={m[2]} style={styles.mdLiText} />
+      </View>
+    );
+  }
+  if (line.startsWith('- [ ] ') || line.startsWith('- [x] ')) {
+    const done = line.startsWith('- [x] ');
+    return (
+      <View style={styles.mdLiRow}>
+        <Text style={[styles.mdBullet, { fontSize: 14 }]}>{done ? '☑' : '☐'}</Text>
+        <InlineText text={line.slice(6)} style={[styles.mdLiText, done && { textDecorationLine: 'line-through', opacity: 0.5 }]} />
+      </View>
+    );
+  }
+  if (line.startsWith('---') || line.startsWith('===')) return <View style={styles.mdHr} />;
+  if (line.startsWith('```')) return <View style={styles.mdCodeBlock}><Text style={styles.mdCodeBlockText}>{line.slice(3)}</Text></View>;
+  if (line === '') return <View style={{ height: 6 }} />;
+  return <InlineText text={line} style={styles.mdP} />;
+}
+
+function InlineText({ text, style }: { text: string; style?: any }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~)/g);
+  return (
+    <Text style={style}>
+      {parts.map((p, i) => {
+        if (p.startsWith('**') && p.endsWith('**')) return <Text key={i} style={styles.mdBold}>{p.slice(2,-2)}</Text>;
+        if (p.startsWith('*') && p.endsWith('*'))   return <Text key={i} style={styles.mdItalic}>{p.slice(1,-1)}</Text>;
+        if (p.startsWith('`') && p.endsWith('`'))   return <Text key={i} style={styles.mdCode}>{p.slice(1,-1)}</Text>;
+        if (p.startsWith('~~') && p.endsWith('~~')) return <Text key={i} style={styles.mdStrike}>{p.slice(2,-2)}</Text>;
+        return p;
+      })}
+    </Text>
+  );
+}
+
 // ─── Markdown preview renderer ────────────────────────────────
 function MarkdownText({ source, style }: { source: string; style?: any }) {
   const lines = source.split('\n');
   return (
     <ScrollView style={{ flex: 1 }}>
-      {lines.map((line, i) => {
-        if (line.startsWith('### ')) return <Text key={i} style={[styles.mdH3]}>{line.slice(4)}</Text>;
-        if (line.startsWith('## '))  return <Text key={i} style={[styles.mdH2]}>{line.slice(3)}</Text>;
-        if (line.startsWith('# '))   return <Text key={i} style={[styles.mdH1]}>{line.slice(2)}</Text>;
-        if (line.startsWith('> '))   return <View key={i} style={styles.mdQuote}><Text style={styles.mdQuoteText}>{line.slice(2)}</Text></View>;
-        if (line.startsWith('- ') || line.startsWith('* ')) return <Text key={i} style={styles.mdLi}>{'  •  '}{line.slice(2)}</Text>;
-        if (/^\d+\. /.test(line)) {
-          const m = line.match(/^(\d+)\. (.*)/)!;
-          return <Text key={i} style={styles.mdLi}>  {m[1]}.  {m[2]}</Text>;
-        }
-        if (line.startsWith('---') || line.startsWith('===')) return <View key={i} style={styles.mdHr} />;
-        if (line === '') return <Text key={i} style={{ height: 8 }} />;
-        // inline bold/italic
-        const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-        return (
-          <Text key={i} style={styles.mdP}>
-            {parts.map((p, j) => {
-              if (p.startsWith('**') && p.endsWith('**')) return <Text key={j} style={styles.mdBold}>{p.slice(2,-2)}</Text>;
-              if (p.startsWith('*') && p.endsWith('*')) return <Text key={j} style={styles.mdItalic}>{p.slice(1,-1)}</Text>;
-              if (p.startsWith('`') && p.endsWith('`')) return <Text key={j} style={styles.mdCode}>{p.slice(1,-1)}</Text>;
-              return p;
-            })}
-          </Text>
-        );
-      })}
+      {lines.map((line, i) => <BlockLine key={i} line={line} isLast={i === lines.length - 1} />)}
     </ScrollView>
   );
 }
@@ -485,19 +563,28 @@ const styles = StyleSheet.create({
   mdBarBtnText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
 
   // Markdown styles
-  mdH1: { fontSize: 24, fontWeight: '700', color: '#fff', marginVertical: 8 },
-  mdH2: { fontSize: 20, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginVertical: 6 },
-  mdH3: { fontSize: 16, fontWeight: '600', color: GOLD, marginVertical: 4 },
-  mdP:  { fontSize: 15, color: 'rgba(255,255,255,0.78)', lineHeight: 24, marginVertical: 2 },
+  mdH1: { fontSize: 24, fontWeight: '700', color: '#fff', marginVertical: 8, paddingHorizontal: 20 },
+  mdH2: { fontSize: 20, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginVertical: 6, paddingHorizontal: 20 },
+  mdH3: { fontSize: 16, fontWeight: '600', color: GOLD, marginVertical: 4, paddingHorizontal: 20 },
+  mdP:  { fontSize: 15, color: 'rgba(255,255,255,0.78)', lineHeight: 24, marginVertical: 2, paddingHorizontal: 20 },
   mdBold: { fontWeight: '700', color: '#fff' },
   mdItalic: { fontStyle: 'italic', color: 'rgba(255,255,255,0.85)' },
   mdCode: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, paddingHorizontal: 4,
     fontSize: 13, color: '#34D399' },
-  mdLi: { fontSize: 15, color: 'rgba(255,255,255,0.78)', lineHeight: 24, marginVertical: 1 },
+  mdLi: { fontSize: 15, color: 'rgba(255,255,255,0.78)', lineHeight: 24, marginVertical: 1, paddingHorizontal: 20 },
   mdQuote: { borderLeftWidth: 3, borderLeftColor: GOLD, paddingLeft: 12, marginVertical: 4 },
   mdQuoteText: { fontSize: 14, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic' },
   mdHr: { height: 0.5, backgroundColor: 'rgba(255,255,255,0.15)', marginVertical: 10 },
+  mdStrike: { textDecorationLine: 'line-through', color: 'rgba(255,255,255,0.4)' },
+  mdLiRow: { flexDirection: 'row', paddingHorizontal: 20, marginVertical: 2, alignItems: 'flex-start' },
+  mdBullet: { fontSize: 15, color: GOLD, marginRight: 8, lineHeight: 24, width: 16 },
+  mdLiText: { flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.78)', lineHeight: 24 },
+  mdCodeBlock: { backgroundColor: 'rgba(0,0,0,0.4)', marginHorizontal: 20, marginVertical: 4,
+    padding: 12, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#34D399' },
+  mdCodeBlockText: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 13, color: '#34D399' },
+  hiddenInput: { position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0 },
 
   // Folder modal
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
